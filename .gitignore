@@ -1,0 +1,45 @@
+# Local configuration and secrets
+config.json
+.env
+.env.*
+!.env.example
+*token*.json
+cookies*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+
+# Runtime state: cache, logs, lock, match reports
+cache/
+logs/
+*.log
+*.sqlite3
+*.sqlite3-*
+*.lock
+
+# Downloaded or extracted media: never commit audio or video
+tmp/
+temp/
+*.webm
+*.m4a
+*.mp3
+*.mp4
+*.opus
+*.wav
+*.part
+*.ytdl
+
+# Local validation traces and diagnostics
+audit/
+
+# Android build intermediates (android/classes.dex is committed on purpose)
+android/build/
+
+# macOS
+.DS_Store
+*.plist

@@ -1,0 +1,13 @@
+# Direct dependencies (pinned; tested with Python 3.12 and 3.13)
+yt-dlp==2026.8.19          # YouTube search, per-video metadata, audio download for verification
+yt-dlp-ejs==0.8.0          # JS challenge solver this yt-dlp release needs for downloads (requires Node.js)
+numpy==2.5.4               # spectral audio comparison (audio_match.py)
+spotipy==2.26.0            # only for spotify_source=web (Spotify Web API, PKCE); unused by the tv source
+
+# Transitive pins, kept explicit for reproducible installs
+requests==2.34.2           # spotipy
+urllib3==2.8.0             # requests
+certifi==2026.10.19        # requests
+charset-normalizer==3.5.2  # requests
+idna==3.20                 # requests
+redis==8.1.0               # declared by spotipy; not used by this project
