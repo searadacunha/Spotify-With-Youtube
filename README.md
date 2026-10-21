@@ -1,4 +1,4 @@
-# Spotify to SmartTube
+# Spotify With YouTube
 
 ## Turn Spotify into a music-video experience on your TV.
 
@@ -16,7 +16,7 @@ SmartTube becomes the screen.
 
 **One Spotify track in. One video on the TV. Automatically.**
 
-That is **Spotify to SmartTube**.
+That is **Spotify With YouTube**.
 
 ---
 
@@ -91,7 +91,7 @@ No reliable match is better than the wrong song.
 
 ---
 
-# What Spotify to SmartTube Does
+# What Spotify With YouTube Does
 
 The pipeline is:
 
@@ -644,7 +644,7 @@ It is built around:
 
 > **Identify the recording. Respect the user. Send only when both are clear.**
 
-That is the entire idea behind **Spotify to SmartTube**.
+That is the entire idea behind **Spotify With YouTube**.
 
 ---
 
