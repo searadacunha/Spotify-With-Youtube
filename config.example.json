@@ -1,0 +1,19 @@
+{
+  "spotify_source": "tv",
+  "tv_target": "192.168.x.x:5555",
+  "smarttube_package": "org.smarttube.stable",
+  "adb_path": "adb",
+  "poll_seconds": 3,
+  "min_score": 100,
+  "prefer_official": true,
+  "allow_audio_fallback": true,
+  "ffmpeg_path": "ffmpeg",
+  "node_path": "node",
+  "matching_timeout_seconds": 240,
+  "audio_timeout_seconds": 60,
+  "max_duration_delta_seconds": 45,
+  "max_duration_delta_ratio": 0.2,
+  "search_results": 12,
+  "search_timeout_seconds": 35,
+  "adb_timeout_seconds": 12
+}
