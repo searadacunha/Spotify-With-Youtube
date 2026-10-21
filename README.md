@@ -1,22 +1,22 @@
 # Spotify to SmartTube
 
-## Spotify plays the song. SmartTube opens the right video.
+## Turn Spotify into a music-video experience on your TV.
 
-I wanted one simple thing:
+Play a song on **Spotify**.
 
-**play music on Spotify, and have the matching music video appear automatically on my Android TV.**
+**Spotify to SmartTube automatically connects it to the corresponding video on SmartTube and opens it on your Android TV.**
 
-Not a random YouTube result.
+Change the song on Spotify, and the video follows.
 
-Not the wrong remix.
+No manual search. No switching apps to look for the clip. No remote-control typing.
 
-Not a live version because the title looked similar.
+Spotify remains the way you choose the music.
 
-Not an old video relaunching after I had already changed tracks.
+SmartTube becomes the screen.
 
-The exact recording playing on Spotify should map to the best available YouTube publication — preferably the official music video — and open in **SmartTube**.
+**One Spotify track in. One video on the TV. Automatically.**
 
-That is what this project does.
+That is **Spotify to SmartTube**.
 
 ---
 
@@ -50,7 +50,7 @@ YouTube usually has the official clip.
 
 SmartTube already gives me the TV experience I want.
 
-The missing piece was the intelligence between them.
+The missing piece was a direct connection between them.
 
 A naïve implementation would do this:
 
@@ -133,7 +133,7 @@ Spotify Desktop on macOS and the Spotify Web API also exist as optional sources.
 
 This repository is not just an ADB launcher.
 
-The interesting part is deciding **which video is actually the same recording as the Spotify track**.
+Behind that simple experience, the project identifies **which video actually corresponds to the Spotify track**.
 
 The matcher uses:
 
@@ -156,7 +156,7 @@ The selection order is:
 
 Popularity and view count do not decide the match.
 
-The most viewed upload is not necessarily the correct upload.
+The goal is simple from the user's side: the song you choose on Spotify becomes the corresponding video on SmartTube.
 
 ---
 
