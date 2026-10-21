@@ -1,0 +1,48 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit tests (Python ${{ matrix.python-version }}, no hardware)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Dependency consistency
+        run: python -m pip check
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+  android-probe:
+    name: Build the TV media probe from source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Compile MediaProbe.java to dex with the runner's Android SDK
+        # Same toolchain as the committed binary: JDK 17, platform android-34, build-tools 35.0.0.
+        env:
+          ANDROID_PLATFORM: android-34
+          ANDROID_BUILD_TOOLS: "35.0.0"
+        run: python3 android/build.py
+      - name: The rebuilt dex must be byte-identical to the committed one
+        run: |
+          sha256sum android/classes.dex
+          git show HEAD:android/classes.dex | sha256sum
+          git diff --exit-code --stat -- android/classes.dex
