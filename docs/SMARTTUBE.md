@@ -52,9 +52,10 @@ adb -s TV_IP:PORT shell am start -W \
 Expected: the TV wakes, SmartTube comes to the front and plays the video; the
 command prints `Status: ok` and an `Activity: org.smarttube.stable/…PlaybackActivity`
 line. This is a manual diagnostic you run yourself. The automatic bridge never
-wakes the TV and never opens SmartTube from another app: its pre-send guard requires
-a SmartTube session you explicitly enabled with `./smarttube resume`, still in the
-foreground and still playing the video the bridge last sent.
+wakes the TV and never opens SmartTube from another app than Spotify TV: its pre-send
+guard requires Spotify TV in front, or a SmartTube session you explicitly enabled with
+`./smarttube resume`, still in the foreground and still playing the video the bridge
+last sent.
 
 If `am start` prints `Error: Activity not started, unable to resolve Intent`, the
 package name is wrong or SmartTube is not installed. Note that `am start` exits with
@@ -98,8 +99,7 @@ When SmartTube starts playing, Android gives it the audio focus and Spotify TV
 *playing* briefly). Consequences:
 
 - a Spotify playlist does not advance by itself while a video plays; you pick the
-  next track in Spotify TV, which now disarms the bridge; after returning to
-  SmartTube with a video playing, explicitly resume;
+  next track in Spotify TV, which arms the bridge while Spotify is in front;
 - the bridge does not resume Spotify, skip tracks or synchronise pause/seek/volume.
 
 This is a property of Android audio focus and of the two apps, not something the

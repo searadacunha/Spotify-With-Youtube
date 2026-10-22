@@ -71,8 +71,8 @@ class StorageAndLoopTests(Fixtures):
         self.source.current.return_value = other
         self.assertEqual(bridge.step(), "sent")
         self.source.current.return_value = self.track
-        self.assertEqual(bridge.step(), "duplicate")
-        self.assertEqual(self.tv.send.call_count, 2)
+        self.assertEqual(bridge.step(), "sent")
+        self.assertEqual(self.tv.send.call_count, 3)
 
     def test_dry_run_never_touches_tv_or_playback_state(self):
         self.assertEqual(self.bridge(True).step(), "dry_run")

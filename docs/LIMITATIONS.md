@@ -51,12 +51,10 @@ Honest list of what the bridge does not do, as of rules version 7.
 ## Playback
 
 - SmartTube takes the audio focus: Spotify TV **was paused** in the observed
-  sessions. Playlists do not reliably advance by themselves. Opening Spotify TV
-  now disarms sync; returning to SmartTube requires explicit resume. With the
-  default `tv` source this means choosing tracks from the TV's own Spotify screen
-  disarms the bridge every time; controlling the TV's Spotify from a phone (Spotify
-  Connect) while SmartTube stays in the foreground is the intended workflow, but it
-  has not been verified.
+  sessions. Playlists do not reliably advance by themselves: pick the next track in
+  Spotify TV, which arms the bridge while Spotify is in front. This path is verified
+  with mocked ADB only. Controlling the TV's Spotify from a phone (Spotify Connect)
+  while SmartTube stays in the foreground has not been verified either.
 - No synchronisation of pause, seek position or volume; every video starts from
   the beginning when the track changes.
 - Delivery of the intent does not guarantee playback (removed, private or
@@ -80,9 +78,9 @@ Honest list of what the bridge does not do, as of rules version 7.
   A strict instantaneous guarantee needs TV-side event handling and atomic cooperation
   from the player. This change is verified with mocked ADB only, not on hardware.
 - The guard conservatively disarms for unknown, buffering, paused or stopped playback.
-  It may require explicit resume after a non-user interruption.
-- A → B → A never replays A automatically for the same destination. Changing matching
-  rules does not reset history. Only the old last sent outcome can be migrated;
-  the previous database did not retain a complete send history.
+  Going back to Spotify TV (or an explicit resume) re-arms it.
+- The same track is never sent twice in a row to a destination, even after a restart
+  or a rules change; A → B → A sends A again. Playing one track on repeat therefore
+  shows its clip once.
 - Cached positive matches are kept 90 days without re-checking that the video is
   still available.

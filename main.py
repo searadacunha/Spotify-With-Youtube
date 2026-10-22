@@ -173,7 +173,7 @@ def main():
     tv = SmartTube(cfg, store)
     if not args.dry_run:
         try:
-            tv.enter_override("Service started; explicit resume required")
+            tv.enter_override("Service started; Spotify in front or resume required")
         except ManualOverride:
             pass
     bridge = Bridge(cfg, source, tv, store, args.dry_run)

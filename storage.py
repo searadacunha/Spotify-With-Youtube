@@ -51,15 +51,20 @@ class Store:
             self.db.execute("INSERT OR REPLACE INTO state VALUES (?, ?)", (name, json.dumps(data)))
 
     def was_handled(self, track_id, destination):
-        return self.db.execute("SELECT 1 FROM handled_tracks WHERE track_id=? AND target=? AND package=?",
-                               (track_id, *destination)).fetchone() is not None
+        # Only the latest track sent to this TV is blocked: a song played again later gets its clip again.
+        row = self.db.execute("SELECT track_id FROM handled_tracks WHERE target=? AND package=? ORDER BY time DESC LIMIT 1",
+                              tuple(destination)).fetchone()
+        return row is not None and row[0] == track_id
 
     def record_handled(self, track_id, destination, video_id, outcome="attempted", when=None):
         # Record before dispatch: an uncertain delivery must never become an automatic retry.
+        # shortcut: check-then-write is not atomic across processes; the bridge.lock flock keeps a single sender.
+        if self.was_handled(track_id, destination):
+            return False
         with self.db:
-            result = self.db.execute("INSERT OR IGNORE INTO handled_tracks VALUES (?, ?, ?, ?, ?, ?)",
-                                     (track_id, *destination, outcome, video_id, time.time() if when is None else when))
-        return result.rowcount == 1
+            self.db.execute("INSERT OR REPLACE INTO handled_tracks VALUES (?, ?, ?, ?, ?, ?)",
+                            (track_id, *destination, outcome, video_id, time.time() if when is None else when))
+        return True
 
     def confirm_handled(self, track_id, destination):
         with self.db:
