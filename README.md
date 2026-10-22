@@ -85,9 +85,9 @@ For a music automation, "close enough" is wrong.
 
 So I built the bridge around one rule:
 
-> **If the project cannot identify the same edition with enough confidence, it abstains.**
+> **An official clip is sent only when it is proven to be the same edition. Otherwise the bridge sends the most-viewed YouTube video for the song: every song gets a video.**
 
-No reliable match is better than the wrong song.
+The edition check decides what counts as the real clip; view count only picks the fallback.
 
 ---
 
@@ -146,15 +146,14 @@ The matcher uses:
 - explicit remix / live / radio-edit / remaster handling
 - detailed YouTube metadata
 - audio comparison when metadata is not enough
-- abstention when confidence is insufficient
+- most-viewed fallback when no official clip is proven
 
 The selection order is:
 
-1. **official music video of the exact Spotify edition**
-2. **official audio / lyric video / visualizer of the exact edition**
-3. **non-official upload only when independent evidence supports it**
+1. **official music video of the exact Spotify edition**, proven as above
+2. otherwise, **the most-viewed search result** naming the song and the artist (then the song alone, then any result): official audio, lyric video, another edit's clip or a fan upload
 
-Popularity and view count do not decide the match.
+View count never proves a clip; it only picks the fallback, so every song gets a video.
 
 The goal is simple from the user's side: the song you choose on Spotify becomes the corresponding video on SmartTube.
 
@@ -318,7 +317,9 @@ flowchart TD
     A -->|yes| V[Selected candidate]
     A -->|no| C[Audio verification]
     C -->|match| V
-    C -->|uncertain / mismatch| X[Abstain]
+    C -->|uncertain / mismatch| X[Most-viewed video]
+    V -->|not an official clip| X
+    X --> ST
     V --> ST{Spotify still on same track?}
     ST -->|no| stale[Discard stale result]
     ST -->|yes| G{Spotify in front or owned SmartTube?}
@@ -456,7 +457,7 @@ The matching engine can also be used directly:
 
 This does not need Spotify playback or an Android TV.
 
-It returns the candidate ranking and the selected result — or abstains.
+It returns the candidate ranking and the selected result: `match` (proven official clip) or `most_viewed` (fallback).
 
 ---
 
@@ -486,7 +487,8 @@ The repository separates hardware observations from code that only exists in tes
 
 The user-priority guard was added after the earlier real-TV matching runs.
 
-It has mocked-ADB coverage but has not yet completed its final hardware validation.
+On the TV (2026-10-22), Spotify in front armed it and one clip was sent; the full
+checklist in `docs/TESTING.md` is not finished.
 
 That distinction is deliberate.
 
@@ -502,7 +504,7 @@ Run:
 
 Current suite:
 
-**93 unit tests**
+**96 unit tests**
 
 covering:
 
@@ -513,7 +515,7 @@ covering:
 - duration checks
 - album conflicts
 - audio-verification verdicts
-- abstention
+- most-viewed fallback
 - cache
 - deduplication
 - stale-result cancellation
@@ -536,16 +538,21 @@ A normal decision is explainable.
 Example:
 
 ```
-SPOTIFY ... | The Underdog Project — Summer Jam - Radio Edit
-CANDIDATE 01 ... OK
-CANDIDATE 02 ... REJECTED | audio mismatch
-SELECTED c0AwLOvF9MA | Summer Jam (Radio Edit)
-SENT video=c0AwLOvF9MA
+SPOTIFY ... | Juice WRLD — Robbery
+CANDIDATE 01 tier=1 ... OK | iI34LYmJ1Fs | Juice WRLD - Robbery (Official Music Video)
+SELECTED iI34LYmJ1Fs
+SENT video=iI34LYmJ1Fs
+
+SPOTIFY ... | Juice WRLD — Fast
+NO VERIFIED CLIP (No reliable reference for the Spotify edition): most viewed video instead
+SELECTED lzQpS1rH3zI score=0 | Juice WRLD - Fast
+SENT video=lzQpS1rH3zI
 ```
 
 Other important outcomes:
 
 ```
+NO VERIFIED CLIP
 NO RELIABLE MATCH
 STALE
 DRY-RUN

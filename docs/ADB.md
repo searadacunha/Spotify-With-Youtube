@@ -83,7 +83,7 @@ others (`adb disconnect`).
 - `push android/classes.dex /data/local/tmp/spotify-smarttube-<hash>.dex` and
   `shell CLASSPATH=… app_process /system/bin MediaProbe`: read the media sessions
   (default `tv` source only).
-- `shell dumpsys window windows`: verify Spotify TV or SmartTube owns the focused window before sending.
+- `shell dumpsys window`: verify Spotify TV or SmartTube owns the focused window before sending.
 - `shell am start -W -a android.intent.action.VIEW -d https://www.youtube.com/watch?v=<id> -p <package>`:
   open the clip from Spotify TV, or replace the video inside the SmartTube session the bridge owns.
 

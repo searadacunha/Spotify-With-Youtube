@@ -6,7 +6,7 @@
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-93 tests in five files. They mock yt-dlp, ADB and the sources, and use synthetic
+96 tests in five files. They mock yt-dlp, ADB and the sources, and use synthetic
 spectra for the audio verdicts, so they run anywhere, including GitHub Actions
 (`.github/workflows/tests.yml`, Python 3.12 and 3.13; a second job rebuilds
 `android/classes.dex` from source and checks it is byte-identical).
@@ -25,7 +25,8 @@ spectra for the audio verdicts, so they run anywhere, including GitHub Actions
 | Apparently official clip with wrong audio → fallback | `test_wrong_audio_in_apparently_official_clip_falls_back` |
 | Uncertain audio blocks sending | `test_uncertain_clip_blocks_all_sending` |
 | Two references with different audio → abstain | `test_ambiguous_references_must_be_compared_and_abstain_if_different` |
-| Audio failure is retried, not cached as no match | `test_audio_failure_is_not_no_match`, `test_bridge.test_search_failure_is_not_negative_cached` |
+| Audio failure is never a verified match; search failure is retried, not cached | `test_audio_failure_is_not_no_match`, `test_bridge.test_search_failure_is_not_negative_cached` |
+| No verified clip → most-viewed video naming song and artist, always one | `test_most_viewed_fallback_names_the_song_and_artist`, `test_bridge.test_official_audio_yields_to_most_viewed_clip`, `test_bridge.test_ambiguity_sends_most_viewed_and_caches_it_one_day` |
 | Unofficial uploads need two independent channels | `test_unofficial_fallback_requires_independent_audio_agreement` |
 | Detailed metadata contradictions (artist, track, album) | `test_wrong_artist_in_detailed_metadata_rejected`, `test_wrong_album_is_not_silently_trusted` |
 | Audio matching on real spectra (offset, gain, noise, cuts) | `ActualAudioTests.*` |
@@ -35,7 +36,7 @@ spectra for the audio verdicts, so they run anywhere, including GitHub Actions
 | Dry run touches neither TV nor state | `test_dry_run_never_touches_tv_or_playback_state` |
 | TV source parsing: video mode, ads, podcasts, missing duration, reconnect | `BoundaryTests.test_tv_*` |
 | ADB targeting, reconnect, exit-code-0 errors, id injection | `test_all_adb_commands_have_target`, `test_adb_reconnect`, `test_android_zero_exit_error_is_failure`, `test_injection_id_never_reaches_adb` |
-| `match` command builds a Spotify-like track, reports abstention | `test_cli.MatchCommandTests` |
+| `match` command builds a Spotify-like track, reports the most-viewed fallback | `test_cli.MatchCommandTests` |
 | No personal paths, private IPs or credentials in published files | `test_repo_hygiene.RepoHygieneTests` |
 
 `load_config()` reads `config.json` when present, so tests on a configured machine

@@ -45,7 +45,7 @@ class UserPriorityTests(unittest.TestCase):
         self.source.current.return_value = self.track
         self.candidate = {"id": "B" * 11, "title": "Bye Bye"}
         self.store.remember(self.track, self.cfg, self.candidate)
-        score = patch("main.score", return_value=Mock(accepted=True, score=120))
+        score = patch("main.score", return_value=Mock(accepted=True, score=120, tier=1))
         score.start()
         self.addCleanup(score.stop)
         self.bridge = Bridge(self.cfg, self.source, self.tv, self.store)
@@ -54,7 +54,7 @@ class UserPriorityTests(unittest.TestCase):
         self.assertEqual(args[:3], [self.cfg["adb_path"], "-s", self.cfg["tv_target"]])
         args = args[3:]
         self.commands.append(args)
-        if args == ["shell", "dumpsys", "window", "windows"]:
+        if args == ["shell", "dumpsys", "window"]:
             return f"mCurrentFocus=Window{{a u0 {self.app}/.PlaybackActivity}}" if self.app else "mCurrentFocus=null"
         if args == ["get-state"]:
             return "device"
@@ -97,7 +97,7 @@ class UserPriorityTests(unittest.TestCase):
         self.activate()
         self.assertEqual(self.bridge.step(), "sent")
         self.assertEqual(len(self.sends()), 1)
-        self.assertEqual(self.commands[-2], ["shell", "dumpsys", "window", "windows"])
+        self.assertEqual(self.commands[-2], ["shell", "dumpsys", "window"])
         self.assertFalse(any("keyevent" in c for c in self.commands))
         self.assertEqual(self.store.get_state("tv_control")["video_id"], self.candidate["id"])
 

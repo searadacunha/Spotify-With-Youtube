@@ -32,11 +32,12 @@ flowchart LR
     ST -->|backoff active| RW[retry_wait]
     ST --> H[Bridge.handle]
     H --> L{Store.lookup<br/>fingerprint + TTL}
-    L -->|hit, re-scored OK| SEL
+    L -->|hit: tier-1 clip or fallback| SEL
     L -->|miss| RES[resolve]
-    RES -->|AmbiguousMatch| ERR[error + backoff<br/>nothing cached]
-    RES -->|None| NM[no_match<br/>cached 24 h]
-    RES -->|Match| REM[Store.remember 90 d] --> SEL[SELECTED]
+    RES -->|tier-1 official clip| REM[Store.remember 90 d] --> SEL[SELECTED]
+    RES -->|other match, None or AmbiguousMatch| MV[most_viewed]
+    MV -->|video| REMF[Store.remember 24 h] --> SEL
+    MV -->|no playable result| NM[no_match<br/>cached 24 h]
     SEL -->|dry run| DR[dry_run]
     SEL --> PREP[SmartTube.check_control<br/>foreground + owned video]
     PREP --> AGAIN[source.current again]
@@ -112,7 +113,7 @@ one last outcome; migration cannot reconstruct older sends it did not store.
 Every command is `adb -s <tv_target> …` with `adb_timeout_seconds`. `prepare()` checks
 `get-state`, runs `connect` if needed, then `pm path <package>` to confirm the target
 app exists. `send()` validates ids, checks explicit control, checks the focused
-package using `dumpsys window windows`, and reads the owned video via `MediaProbe`.
+package using `dumpsys window`, and reads the owned video via `MediaProbe`.
 It records the attempt, rechecks control/focus, then issues the `VIEW` intent.
 There is no wake keyevent. Missing/ambiguous focus, a different video, pause/stop or
 an inspection error enters manual override. Delivery text must confirm success;

@@ -2,6 +2,7 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -132,15 +133,33 @@ class StorageAndLoopTests(Fixtures):
             self.assertEqual(self.bridge().step(), "duplicate")
         self.assertEqual(self.tv.send.call_count, 1)
 
-    def test_ambiguity_saves_ranking_but_never_cache_or_send(self):
+    def test_ambiguity_sends_most_viewed_and_caches_it_one_day(self):
         from youtube_match import AmbiguousMatch
         self.store.db.execute("DELETE FROM matches")
-        with patch("main.resolve", side_effect=AmbiguousMatch("audio conflict", [{"reason": "different audio"}])):
-            self.assertEqual(self.bridge().step(), "error")
-        self.tv.send.assert_not_called()
-        self.assertEqual(self.store.lookup(self.track, self.cfg), (False, None))
+        ranking = [{"candidate": {**self.video, "id": "C" * 11, "view_count": 10}},
+                   {"candidate": {**self.video, "id": "D" * 11, "view_count": 90}}]
+        with patch("main.resolve", side_effect=AmbiguousMatch("audio conflict", ranking)):
+            self.assertEqual(self.bridge().step(), "sent")
+        self.assertEqual(self.tv.send.call_args.args[0], "D" * 11)
+        hit, cached = self.store.lookup(self.track, self.cfg)
+        self.assertEqual((hit, cached["id"], cached["fallback"]), (True, "D" * 11, True))
+        expires = self.store.db.execute("SELECT expires FROM matches").fetchone()[0]
+        self.assertLess(expires - time.time(), 86401)
         report = json.loads((Path(self.tmp.name) / "logs/last-match.json").read_text())
         self.assertEqual(report["error"], "audio conflict")
+        # The cached fallback is reused without a new search.
+        self.store.db.execute("DELETE FROM handled_tracks")
+        with patch("main.resolve") as resolve:
+            self.assertEqual(self.bridge().step(), "sent")
+        resolve.assert_not_called()
+
+    def test_official_audio_yields_to_most_viewed_clip(self):
+        audio = score(self.track, {**self.video, "id": "E" * 11, "title": "Stromae - Papaoutai (Official Audio)", "view_count": 5}, self.cfg)
+        clip = {**self.video, "id": "F" * 11, "title": "Stromae - Papaoutai", "channel": "Fan", "view_count": 9000}
+        self.store.db.execute("DELETE FROM matches")
+        with patch("main.resolve", return_value=(audio, [{"candidate": audio.candidate}, {"candidate": clip}])):
+            self.assertEqual(self.bridge().step(), "sent")
+        self.assertEqual((audio.tier, self.tv.send.call_args.args[0]), (2, "F" * 11))
 
     def test_old_reviewed_match_does_not_survive_policy_upgrade(self):
         candidate = {**self.video, "reviewed_track_id": self.track.id}

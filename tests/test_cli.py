@@ -20,7 +20,7 @@ class MatchCommandTests(unittest.TestCase):
 
     def test_match_builds_spotify_like_track_and_prints_selection(self):
         clip = dict(id="B" * 11, title="The Underdog Project - Summer Jam (Radio Edit) (Official Video)")
-        code, report, resolve = self.run_match(self.ARGS, return_value=(Match(clip, 120, "video", True, []), [{"id": "B" * 11}]))
+        code, report, resolve = self.run_match(self.ARGS, return_value=(Match(clip, 120, "video", True, [], tier=1), [{"id": "B" * 11}]))
         self.assertEqual(code, 0)
         self.assertEqual((report["verdict"], report["video_id"], report["url"]),
                          ("match", "B" * 11, "https://www.youtube.com/watch?v=" + "B" * 11))
@@ -34,10 +34,11 @@ class MatchCommandTests(unittest.TestCase):
         track = resolve.call_args.args[0]
         self.assertEqual((track.artists, track.album), (("Marshmello", "Juice WRLD"), "Bye Bye"))
 
-    def test_match_reports_abstention_and_no_match_with_exit_code_1(self):
-        code, report, _ = self.run_match(self.ARGS, side_effect=AmbiguousMatch("Isolated unofficial source", [{"id": "x"}]))
-        self.assertEqual((code, report["verdict"], report["error"], report["ranking"]),
-                         (1, "abstain", "Isolated unofficial source", [{"id": "x"}]))
+    def test_match_reports_most_viewed_fallback_and_no_match_with_exit_code_1(self):
+        ranking = [{"candidate": dict(id="C" * 11, title="The Underdog Project - Summer Jam", channel="x", view_count=7)}]
+        code, report, _ = self.run_match(self.ARGS, side_effect=AmbiguousMatch("Isolated unofficial source", ranking))
+        self.assertEqual((code, report["verdict"], report["error"], report["video_id"]),
+                         (0, "most_viewed", "Isolated unofficial source", "C" * 11))
         code, report, _ = self.run_match(self.ARGS, return_value=(None, []))
         self.assertEqual((code, report["verdict"], report["video_id"]), (1, "no_match", None))
 

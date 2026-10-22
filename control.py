@@ -37,7 +37,7 @@ def match(argv, cfg=None):
     parser.add_argument("--album", default="", help="Spotify album name (optional)")
     args = parser.parse_args(argv)
     from common import Track
-    from youtube_match import AmbiguousMatch, resolve
+    from youtube_match import AmbiguousMatch, most_viewed, resolve
     # Synthetic id: this track never comes from Spotify, so it never enters the cache.
     fake_id = hashlib.sha256("|".join([*args.artist, args.title, str(args.duration)]).encode()).hexdigest()[:22]
     track = Track(fake_id, args.title, tuple(args.artist), args.duration, args.album)
@@ -45,13 +45,16 @@ def match(argv, cfg=None):
     try:
         selected, ranking = resolve(track, cfg or load_config())
     except AmbiguousMatch as exc:
-        report.update(verdict="abstain", error=str(exc), ranking=exc.ranking)
-    else:
-        video_id = selected.candidate["id"] if selected else None
-        report.update(verdict="match" if selected else "no_match", video_id=video_id,
-                      url="https://www.youtube.com/watch?v=" + video_id if video_id else None, ranking=ranking)
+        selected, ranking = None, exc.ranking
+        report["error"] = str(exc)
+    verdict = "match" if selected and selected.tier == 1 else "most_viewed"
+    if verdict == "most_viewed":
+        selected = most_viewed(track, ranking) or selected
+    video_id = selected.candidate["id"] if selected else None
+    report.update(verdict=verdict if selected else "no_match", video_id=video_id,
+                  url="https://www.youtube.com/watch?v=" + video_id if video_id else None, ranking=ranking)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["verdict"] == "match" else 1
+    return 0 if selected else 1
 
 
 def main():
