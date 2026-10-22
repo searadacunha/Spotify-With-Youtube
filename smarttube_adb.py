@@ -41,7 +41,12 @@ class SmartTube:
 
     def foreground_app(self):
         # On the Android 12 TV, "dumpsys window windows" has no mCurrentFocus line; the full dump does.
-        windows = self.adb("shell", "dumpsys", "window")
+        try:
+            windows = self.adb("shell", "dumpsys", "window")
+        except RuntimeError:
+            # While disarmed this is the only ADB call: reconnect here after the TV was off.
+            self.prepare()
+            windows = self.adb("shell", "dumpsys", "window")
         packages = set(re.findall(r"mCurrentFocus=Window\{[^\n]*?\bu\d+\s+([\w.]+)/", windows))
         return next(iter(packages)) if len(packages) == 1 else None
 
