@@ -123,6 +123,15 @@ class VersionMatchingTests(unittest.TestCase):
                 search(self.track, self.cfg, deadline=49)
             run.assert_not_called()
 
+    def test_one_empty_query_does_not_cancel_search(self):
+        hit = json.dumps({"entries": [{"id": "B" * 11, "title": "Summer Jam"}]})
+        with patch("youtube_match.run", side_effect=[hit, '{"entries": []}', hit, hit]):
+            self.assertEqual([c["id"] for c in search(self.track, self.cfg)], ["B" * 11])
+        with patch("youtube_match.run", return_value='{"entries": []}'), self.assertRaisesRegex(RuntimeError, "empty"):
+            search(self.track, self.cfg)
+        with patch("youtube_match.run", return_value="{}"), self.assertRaisesRegex(RuntimeError, "invalid"):
+            search(self.track, self.cfg)
+
     def test_wrong_artist_in_detailed_metadata_rejected(self):
         for changes in ({"artists": ["Another Artist"]}, {"track": "Another Song"}, {"track": "Summer Jam (Jerome Remix)"}):
             with self.subTest(changes=changes):

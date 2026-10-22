@@ -85,8 +85,9 @@ files or a JavaScript runtime:
 
 Results are merged by video id. Kept fields: `id, title, channel, channel_id,
 channel_is_verified, duration, live_status, view_count` (`view_count` is kept for
-the reports only). An empty or invalid search raises an error that is **retried
-later, never cached as "no match"**. Each call is bounded by
+the reports and the most-viewed fallback). One query with no result is skipped; an
+invalid response, or no result at all over every query, raises an error that is
+**retried later, never cached as "no match"**. Each call is bounded by
 `search_timeout_seconds` (35) and by the overall `matching_timeout_seconds` (240).
 
 ## 5. Candidate details

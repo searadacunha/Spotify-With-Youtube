@@ -272,6 +272,14 @@ class BoundaryTests(unittest.TestCase):
             SmartTube(cfg).prepare()
             self.assertEqual(runner.call_args_list[1].args[0][-2:], ["connect", cfg["tv_target"]])
 
+    def test_foreground_read_reconnects_after_tv_was_off(self):
+        cfg = load_config()
+        focus = "mCurrentFocus=Window{a u0 com.spotify.tv.android/.MainActivity}"
+        with patch("smarttube_adb.run", side_effect=[RuntimeError("device not found"), RuntimeError("not found"),
+                                                     "connected", "device", "package:/app/base.apk", focus]) as runner:
+            self.assertEqual(SmartTube(cfg).foreground_app(), "com.spotify.tv.android")
+            self.assertEqual(runner.call_args_list[2].args[0][-2:], ["connect", cfg["tv_target"]])
+
     def test_android_zero_exit_error_is_failure(self):
         tv = SmartTube(load_config(), Mock())
         with patch("smarttube_adb.run", return_value="Error: Activity not started, unable to resolve Intent"), \

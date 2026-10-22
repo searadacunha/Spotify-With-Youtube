@@ -227,11 +227,14 @@ def search(track, cfg, deadline=None):
                       "--socket-timeout", "10", "--retries", "1", "--extractor-retries", "1",
                       f"ytsearch{cfg['search_results']}:{query}"], timeout)
         data = json.loads(output)
-        if not isinstance(data.get("entries"), list) or not data["entries"]:
-            raise RuntimeError("YouTube: empty/invalid search; deferred retry")
+        if not isinstance(data.get("entries"), list):
+            raise RuntimeError("YouTube: invalid search; deferred retry")
+        # The strict Topic query is often empty; the other queries still count.
         for entry in data["entries"]:
             if entry:
                 candidates[entry["id"]] = {k: entry.get(k) for k in FIELDS}
+    if not candidates:
+        raise RuntimeError("YouTube: empty search; deferred retry")
     return list(candidates.values())
 
 
