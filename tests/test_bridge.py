@@ -53,6 +53,9 @@ class StorageAndLoopTests(Fixtures):
         t = Track(self.track.id, self.track.title, self.track.artists, 400)
         self.assertFalse(self.store.lookup(t, self.cfg)[0])
 
+    def test_cache_survives_millisecond_duration_jitter(self):
+        self.assertTrue(self.store.lookup(Track(self.track.id, self.track.title, self.track.artists, 232.001, self.track.album), self.cfg)[0])
+
     def test_expired_cache(self):
         self.store.db.execute("UPDATE matches SET expires=0")
         self.assertFalse(self.store.lookup(self.track, self.cfg)[0])
@@ -189,8 +192,7 @@ class BoundaryTests(unittest.TestCase):
     def test_tv_rejects_radio_edit_video_metadata_with_album_as_artist(self):
         session = {**self.tv_session(), "title": "Summer Jam - Radio Edit",
                    "artist": "Summer Jam", "album": "Summer Jam"}
-        with self.assertRaisesRegex(ValueError, "audio mode"):
-            from_tv([session])
+        self.assertIsNone(from_tv([session]))
 
     def test_tv_reads_real_track_fields(self):
         t = from_tv([self.tv_session()])
@@ -199,8 +201,7 @@ class BoundaryTests(unittest.TestCase):
 
     def test_tv_video_metadata_does_not_invent_artist(self):
         bad = {**self.tv_session(), "title": "Righteous", "artist": "Righteous", "album": "Righteous"}
-        with self.assertRaisesRegex(ValueError, "audio mode"):
-            from_tv([bad])
+        self.assertIsNone(from_tv([bad]))
 
     def test_tv_source_does_not_use_macos_or_oauth(self):
         from spotify_source import SpotifySource
