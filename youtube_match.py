@@ -232,7 +232,9 @@ def search(track, cfg, deadline=None):
         # The strict Topic query is often empty; the other queries still count.
         for entry in data["entries"]:
             if entry:
-                candidates[entry["id"]] = {k: entry.get(k) for k in FIELDS}
+                # Result pages sometimes omit a field (view count): keep what an earlier query gave.
+                known = {k: v for k, v in candidates.get(entry["id"], {}).items() if v is not None}
+                candidates[entry["id"]] = {**{k: entry.get(k) for k in FIELDS}, **known}
     if not candidates:
         raise RuntimeError("YouTube: empty search; deferred retry")
     return list(candidates.values())
