@@ -132,6 +132,12 @@ class VersionMatchingTests(unittest.TestCase):
         with patch("youtube_match.run", return_value="{}"), self.assertRaisesRegex(RuntimeError, "invalid"):
             search(self.track, self.cfg)
 
+    def test_search_keeps_view_count_a_later_query_omits(self):
+        first = json.dumps({"entries": [{"id": "B" * 11, "title": "Summer Jam", "view_count": 900}]})
+        later = json.dumps({"entries": [{"id": "B" * 11, "title": "Summer Jam", "view_count": None}]})
+        with patch("youtube_match.run", side_effect=[first, later, later, later]):
+            self.assertEqual(search(self.track, self.cfg)[0]["view_count"], 900)
+
     def test_wrong_artist_in_detailed_metadata_rejected(self):
         for changes in ({"artists": ["Another Artist"]}, {"track": "Another Song"}, {"track": "Summer Jam (Jerome Remix)"}):
             with self.subTest(changes=changes):
