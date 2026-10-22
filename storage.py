@@ -24,7 +24,8 @@ class Store:
     def fingerprint(track, cfg):
         policy = {k: cfg[k] for k in ("min_score", "prefer_official", "allow_audio_fallback",
                    "max_duration_delta_seconds", "max_duration_delta_ratio", "search_results")}
-        raw = json.dumps([SCORING_VERSION, asdict(track), policy], sort_keys=True)
+        # Spotify TV reports the same track 1 ms longer or shorter from one day to the next.
+        raw = json.dumps([SCORING_VERSION, {**asdict(track), "duration": round(track.duration)}, policy], sort_keys=True)
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def lookup(self, track, cfg):

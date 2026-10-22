@@ -131,7 +131,8 @@ advertisement flag. `from_tv()` accepts exactly one Spotify session in state
 `3` (playing) whose media id is `spotify:track:<id>`; ads and podcasts return
 "nothing playing"; a missing duration is an error (never estimated); and the
 Spotify TV **video mode**, which repeats the title in the artist and album fields,
-is refused with an explicit message because the artist cannot be known.
+is read as "nothing playing" because the artist cannot be known (polled at the
+normal pace, so switching to audio mode is picked up within one poll).
 
 The dex is pushed to `/data/local/tmp/spotify-smarttube-<sha256 prefix>.dex` once per
 connection and re-pushed after an ADB error. `./smarttube check` and the service both

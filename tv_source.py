@@ -31,7 +31,8 @@ def from_tv(sessions):
     # Spotify TV's native video mode can repeat the title in every text field.
     base_title = re.sub(r"\s*(?:-\s*|\()radio edit\)?\s*$", "", data["title"], flags=re.I).strip()
     if base_title.casefold() == data["artist"].casefold() == (data.get("album") or "").casefold():
-        raise ValueError("Spotify TV reports the title as artist and album: switch Spotify TV to audio mode")
+        # Idle, not an error: an error backs off up to 5 min and the next track would be missed.
+        return None
     return Track(identifier.split(":")[-1], data["title"], (data["artist"],),
                  duration / 1000, data.get("album") or "")
 

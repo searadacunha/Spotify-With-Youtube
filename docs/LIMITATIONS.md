@@ -15,7 +15,7 @@ Honest list of what the bridge does not do, as of rules version 7.
 ## Sources
 
 - The `tv` source reads **Spotify's TV app** (`com.spotify.tv.android`) only, with the
-  package names compiled into the probe. Spotify TV's video mode is refused because
+  package names compiled into the probe. Spotify TV's video mode is ignored because
   it hides the artist; use audio mode.
 - The `macos` and `web` sources are implemented and unit-tested but were not
   exercised end to end during this project's validation (the TV source was the one

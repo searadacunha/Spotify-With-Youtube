@@ -127,8 +127,9 @@ With `macos`: the desktop app must be running and playing locally; grant the
 Automation permission macOS asks for. With `web`: `./smarttube login` again if the
 token expired.
 
-**`Spotify TV reports the title as artist and album`** — Spotify TV's video mode.
-Choose *Switch to audio* in Spotify TV.
+**`IDLE … (Spotify TV video mode: switch to audio)` while music plays** — Spotify TV's
+video mode repeats the title in the artist and album fields. Choose *Switch to audio*
+in Spotify TV; the bridge picks the track up within one poll.
 
 **`Spotify rate limited: retry after Ns`** — Web API only; the bridge waits as told.
 
