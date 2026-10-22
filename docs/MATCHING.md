@@ -1,12 +1,13 @@
 # Matching pipeline
 
-How `youtube_match.py` turns a Spotify track into one YouTube video id, or into an
-abstention. Everything below is read from the code (rules version `SCORING_VERSION = 7`);
+How `youtube_match.py` turns a Spotify track into one YouTube video id: a proven
+official clip, or else the most-viewed result (section 14). Everything below is read from the code (rules version `SCORING_VERSION = 7`);
 numbers in parentheses are the defaults from `config.example.json`.
 
 Guiding rule: **recording identity precedes source priority, and popularity is never
 identity evidence.** A candidate is first checked for *being the same recording and
-edition*; only then do official sources rank above others. View counts are never read.
+edition*; only then do official sources rank above others. View counts are read only
+by the most-viewed fallback (section 14), never as identity evidence.
 
 ## 1. Spotify metadata
 
@@ -241,29 +242,47 @@ Measured values on real tracks are in the README's verified examples.
 
 ## 12. Abstention
 
-`resolve()` raises `AmbiguousMatch` (logged as `FAILED … retry in Ns`, ranking saved
-in `logs/last-match.json`, **nothing cached**) for: search deadline or budget
+`resolve()` raises `AmbiguousMatch` (ranking and error saved in
+`logs/last-match.json`) for: search deadline or budget
 exhausted; more than 16 plausible candidates; no reliable reference; album conflict
 without a second reference; isolated unofficial source; contradictory references;
 undecidable higher-priority video; audio download or decode failure; and
 "insufficiently corroborated" when, after comparisons, no candidate is `accepted`.
 
-It returns `None` (logged `NO RELIABLE MATCH`, **cached 24 h** as no match) only
-when no candidate is even eligible after the detail checks, which is a stable
-negative rather than a transient failure.
+It returns `None` when no candidate is even eligible after the detail checks.
+In both cases, and when the accepted match is not a tier-1 official clip, the bridge
+sends the most-viewed result instead (section 14).
 
 ## 13. Cache
 
 `storage.py` keeps `track_id → candidate` in SQLite with a fingerprint of
 `SCORING_VERSION`, the track's fields and the matching options (`min_score`,
 `prefer_official`, `allow_audio_fallback`, duration limits, `search_results`).
-Positive entries expire after 90 days, negative ones after 24 hours. Before use,
-a cached candidate is re-scored with the current configuration and dropped if it
-is no longer accepted. The audio verdict stored with the candidate is only trusted
+Proven clips expire after 90 days; most-viewed fallbacks and negative entries after
+24 hours, so a clip missed through a transient error is searched again the next day.
+Before use, a cached candidate is re-scored with the current configuration and
+dropped unless it is still an accepted tier-1 clip or was a fallback. The audio verdict stored with the candidate is only trusted
 when it was produced under the same rules version for the same Spotify track id
 and names a valid reference video; evidence coming from YouTube metadata fields is
 never read (a test asserts that an `audio_check` key returned by the network is
 discarded).
+
+## 14. Most-viewed fallback
+
+Every song gets a video. When `resolve()` does not return an accepted tier-1 official
+clip (no clip, official audio or lyric video only, abstention, audio download
+failure), `most_viewed()` picks among the candidates already found, live and upcoming
+streams excluded:
+
+1. results whose title names the song (raw or normalized) and whose title or channel
+   names the first artist;
+2. otherwise results naming the song;
+3. otherwise any result.
+
+The highest `view_count` of the first non-empty group wins (log `NO VERIFIED CLIP …:
+most viewed video instead`). Popularity only picks; it proves nothing about the
+edition, so the fallback is cached 24 h. `NO RELIABLE MATCH` remains only when the
+search returned no playable result. `./smarttube match` reports `verdict: most_viewed`.
 
 ## Worked examples
 
@@ -273,7 +292,9 @@ discarded).
 title and artist checks. The Topic upload is an exact-edition official audio with a
 0.1 s gap: reference. The VEVO upload has a *missing* edition and a better tier, so
 it is compared: similarities 0.48 / 0.38 / 0.36 with 33 s of offset drift →
-`mismatch` → rejected. The official audio is sent (tier 2, score 120).
+`mismatch` → rejected. The official audio is the verified match (tier 2, score 120);
+not being a clip, it yields to the most-viewed result (on 2026-10-22: `J7drvhZwPcs`,
+Kontor.TV official video, 102 M views).
 
 **Official clip shorter than the track.** Spotify: `Robbery`, 240.1 s. The official
 music video is 218 s: 22 s gap, within `min(45, 48)` but above 5 s, so the clip
@@ -283,13 +304,15 @@ needs audio. Reference: the official audio (exact duration). Three windows at
 
 **No clip at all.** Spotify: `Bye Bye`, 108.5 s. The visualizer and the official
 lyric video are both tier 2 exact-edition candidates; two references are compared
-(0.996 similarity) and the first by rank is sent. Had they differed, nothing would
-have been sent.
+(0.996 similarity) and the first by rank is the verified match; not being a clip, it
+yields to the most-viewed result, as it would have had they differed.
 
 **Wrong remix, huge view count.** Spotify: `Summer Jam - Radio Edit`. Candidate:
 `Summer Jam (Alle Farben Remix) (Official Video)`, 10 billion views. Editions
 `('radio edit',)` vs `('alle farben remix',)` → `conflict` → rejected before any
 score is considered (`tests/test_matching.py::test_popular_remix_never_replaces_radio_edit`).
+It can still be sent by the most-viewed fallback when no clip of the exact edition
+is proven.
 
 **Live, acoustic, slowed, extended.** Same track, candidates titled `(Live)`,
 `(Acoustic)`, `(Slowed)`, `(Extended Mix)`: all `conflict`, all rejected.

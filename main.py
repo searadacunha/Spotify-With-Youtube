@@ -13,7 +13,7 @@ from common import ROOT, load_config, operation_guard
 from smarttube_adb import SmartTube, ManualOverride
 from spotify_source import SpotifySource
 from storage import Store
-from youtube_match import AmbiguousMatch, resolve, score
+from youtube_match import AmbiguousMatch, most_viewed, resolve, score
 
 LOG = logging.getLogger(__name__)
 
@@ -95,19 +95,22 @@ class Bridge:
         if hit:
             LOG.info("CACHE %s %s", track.id, candidate["id"] if candidate else "no reliable video")
             selected = score(track, candidate, self.cfg) if candidate else None
-            if selected and not selected.accepted:
+            # Only a verified official clip or a previous fallback is reused; an official audio is reconsidered.
+            if selected and not (candidate.get("fallback") or (selected.accepted and selected.tier == 1)):
                 hit = False
         if not hit:
+            error = None
             try:
                 with operation_guard(None if self.dry_run else self.check_pending):
                     selected, ranking = resolve(track, self.cfg)
             except AmbiguousMatch as exc:
-                (ROOT / "logs/last-match.json").write_text(json.dumps(
-                    {"track": asdict(track), "error": str(exc), "ranking": exc.ranking}, ensure_ascii=False, indent=2))
-                raise
+                selected, ranking, error = None, exc.ranking, str(exc).removesuffix("; nothing sent")
             # The report is local, overwritten per search, and never published.
             (ROOT / "logs/last-match.json").write_text(json.dumps(
-                {"track": asdict(track), "ranking": ranking}, ensure_ascii=False, indent=2))
+                {"track": asdict(track), **({"error": error} if error else {}), "ranking": ranking}, ensure_ascii=False, indent=2))
+            if not selected or selected.tier != 1:
+                LOG.info("NO VERIFIED CLIP (%s): most viewed video instead", error or (selected.kind if selected else "no match"))
+                selected = most_viewed(track, ranking) or selected
             candidate = selected.candidate if selected else None
             if not self.dry_run:
                 self.store.remember(track, self.cfg, candidate)

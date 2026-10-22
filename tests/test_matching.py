@@ -10,7 +10,7 @@ import numpy as np
 
 from audio_match import AudioComparator, bounded_process, compare_features, features
 from common import Track, load_config
-from youtube_match import AmbiguousMatch, identity, rank, resolve, score, search, video_details
+from youtube_match import AmbiguousMatch, identity, most_viewed, rank, resolve, score, search, video_details
 
 
 class VersionMatchingTests(unittest.TestCase):
@@ -34,6 +34,21 @@ class VersionMatchingTests(unittest.TestCase):
     def test_exact_version_clip_available(self):
         self.assertEqual(self.choose([self.audio, self.clip]).candidate["id"], self.clip["id"])
         self.compare.compare.assert_called_once()
+
+    def test_most_viewed_fallback_names_the_song_and_artist(self):
+        track = Track("1" * 22, "Love Generation - Edit", ("Bob Sinclar", "Gary Pine"), 204, "")
+        ranking = [{"candidate": c} for c in (
+            dict(id="A" * 11, title="Bob Sinclar - World Hold On", channel="Bob Sinclar", view_count=900),
+            dict(id="B" * 11, title="Bob Sinclar - Love Generation (Official Video)", channel="Embassy One", view_count=200),
+            dict(id="C" * 11, title="Love Generation (Edit)", channel="Bob Sinclar", view_count=5),
+            dict(id="D" * 11, title="Love Generation cover", channel="Someone", view_count=500),
+            dict(id="E" * 11, title="Bob Sinclar - Love Generation", channel="Bob Sinclar", view_count=10 ** 9,
+                 live_status="is_upcoming"))]
+        chosen = most_viewed(track, ranking)
+        self.assertEqual((chosen.candidate["id"], chosen.candidate["fallback"], chosen.accepted), ("B" * 11, True, True))
+        # Always a video: another song of the artist rather than nothing.
+        self.assertEqual(most_viewed(track, ranking[:1]).candidate["id"], "A" * 11)
+        self.assertIsNone(most_viewed(track, [{"reason": "no candidate"}]))
 
     def test_no_clip_uses_official_audio(self):
         self.assertEqual(self.choose([self.audio]).candidate["id"], self.audio["id"])

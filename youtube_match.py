@@ -366,3 +366,17 @@ def resolve(track, cfg, candidates=None, comparator=None):
         return chosen, report()
     except (RuntimeError, OSError, ValueError) as exc:
         raise AmbiguousMatch(str(exc), report()) from exc
+
+
+def most_viewed(track, ranking):
+    """Every song gets a video: without a verified official clip, the most-viewed result for the song.
+    Popularity picks here, it never proves the recording."""
+    song, artist = song_title(track.title), norm(track.artists[0].split(",")[0]).replace(" ", "")
+    playable = [m["candidate"] for m in ranking if VIDEO_ID.fullmatch(m.get("candidate", {}).get("id") or "")
+                and m["candidate"].get("live_status") not in {"is_live", "is_upcoming"}]
+    named = [c for c in playable if phrase(song, norm(c.get("title"))) or phrase(song, song_title(c.get("title") or "", track.artists))]
+    pool = [c for c in named if artist in norm(f"{c.get('title')} {c.get('channel')}").replace(" ", "")] or named or playable
+    if not pool:
+        return None
+    best = max(pool, key=lambda c: c.get("view_count") or 0)
+    return Match({**best, "fallback": True}, 0, "most_viewed", True, [f"most viewed fallback: {best.get('view_count') or 0} views"])

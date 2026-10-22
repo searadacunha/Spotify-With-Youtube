@@ -40,7 +40,8 @@ class SmartTube:
             raise RuntimeError("Target package not installed: " + self.cfg["smarttube_package"])
 
     def foreground_app(self):
-        windows = self.adb("shell", "dumpsys", "window", "windows")
+        # On the Android 12 TV, "dumpsys window windows" has no mCurrentFocus line; the full dump does.
+        windows = self.adb("shell", "dumpsys", "window")
         packages = set(re.findall(r"mCurrentFocus=Window\{[^\n]*?\bu\d+\s+([\w.]+)/", windows))
         return next(iter(packages)) if len(packages) == 1 else None
 

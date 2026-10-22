@@ -64,18 +64,21 @@ editions, which Spotify sometimes does), the bridge can only rely on duration an
 audio against an official reference of what Spotify calls the track. Report the
 Spotify id, the chosen id and the report.
 
-**No candidate found (`NO RELIABLE MATCH`)** — The bounded search (up to 4 queries
-× 12 results) found no official or corroborated publication of this exact edition.
-Try `./smarttube match --artist … --title … --duration …` to see the ranking and the
+**`NO VERIFIED CLIP …: most viewed video instead`** — The bounded search (up to 4
+queries × 12 results) proved no official clip of this exact edition, so the
+most-viewed result was sent. Try `./smarttube match --artist … --title … --duration …` to see the ranking and the
 rejection reasons. Common causes: the official clip exists only on a label channel
 without an explicit "official video" marker; Spotify names a collaboration
-differently from YouTube; a live-only release. Negative decisions are reconsidered
-after 24 h.
+differently from YouTube; a live-only release. Fallbacks are reconsidered after 24 h.
 
-**`FAILED … retry in Ns` with an ambiguity message** — The resolution abstained
+**No video at all (`NO RELIABLE MATCH`)** — The search returned no playable result.
+Reconsidered after 24 h.
+
+**Ambiguity message in `NO VERIFIED CLIP (…)`** — The resolution abstained
 (`More than 16 plausible candidates`, `No reliable reference`, `contradictory
-audio`, `Isolated unofficial source`…). Nothing is cached; the bridge retries with
-backoff. The ranking is in `logs/last-match.json`.
+audio`, `Isolated unofficial source`…). The most-viewed result is sent and cached
+24 h; the ranking and the error are in `logs/last-match.json`. `FAILED … retry in Ns`
+now comes only from search or source failures.
 
 **Audio verification failed** — `Audio yt_dlp: …` errors come from YouTube
 (HTTP 403, sign-in required, format unavailable): update `yt-dlp` and `yt-dlp-ejs`

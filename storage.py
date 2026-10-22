@@ -37,7 +37,8 @@ class Store:
         return True, candidate
 
     def remember(self, track, cfg, candidate):
-        ttl = 90 * 86400 if candidate else 86400
+        # A fallback is retried the next day: an official clip may have been missed by a transient error.
+        ttl = 90 * 86400 if candidate and not candidate.get("fallback") else 86400
         with self.db:
             self.db.execute("INSERT OR REPLACE INTO matches VALUES (?, ?, ?, ?)",
                             (track.id, self.fingerprint(track, cfg), json.dumps(candidate), time.time() + ttl))

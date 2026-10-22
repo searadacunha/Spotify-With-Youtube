@@ -4,7 +4,7 @@
 
 - **TV over ADB.** With ADB debugging enabled, anyone on your LAN who is accepted by
   the TV's authorization dialog can control the TV. The bridge uses that access to
-  read media sessions, read which window has the focus (`dumpsys window windows`)
+  read media sessions, read which window has the focus (`dumpsys window`)
   and start one `VIEW` intent; it never installs apps, changes settings, reads files
   or sends key events. Keep ADB debugging restricted to computers you accepted, and
   disable it when not needed.
