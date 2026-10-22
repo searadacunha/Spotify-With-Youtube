@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 import control
 from common import Track, communicate_checked, load_config, operation_guard, run
 from main import Bridge
-from smarttube_adb import SmartTube, ManualOverride
+from smarttube_adb import SPOTIFY_TV, SmartTube, ManualOverride
 from storage import Store
 
 
@@ -79,8 +79,19 @@ class UserPriorityTests(unittest.TestCase):
     def test_default_requires_explicit_resume(self):
         self.assertEqual(self.bridge.step(), "manual_override")
         self.assertTrue(self.store.get_state("tv_control")["manual_override"])
-        self.assertEqual(self.commands, [])
+        self.assertEqual(self.sends(), [])
         self.source.current.assert_not_called()
+
+    def test_spotify_in_front_claims_control_without_resume(self):
+        self.app = SPOTIFY_TV
+        self.assertEqual(self.bridge.step(), "sent")
+        state = self.store.get_state("tv_control")
+        self.assertEqual((state["manual_override"], state["video_id"]), (False, self.candidate["id"]))
+        self.app = "com.google.android.youtube.tv"
+        self.assertEqual(self.bridge.step(), "manual_override")
+        self.app = SPOTIFY_TV
+        self.assertEqual(self.bridge.step(), "duplicate")
+        self.assertEqual(len(self.sends()), 1)
 
     def test_controlled_smarttube_allows_send_without_wake(self):
         self.activate()
@@ -114,7 +125,7 @@ class UserPriorityTests(unittest.TestCase):
             self.source.current.return_value = track
             self.assertEqual(self.bridge.step(), "manual_override")
         self.source.current.assert_not_called()
-        self.assertEqual(self.commands, [])
+        self.assertEqual(self.sends(), [])
         self.app = self.cfg["smarttube_package"]
         self.assertEqual(self.bridge.step(), "manual_override")
 
@@ -204,7 +215,7 @@ class UserPriorityTests(unittest.TestCase):
             self.app = self.cfg["smarttube_package"]
             self.commands.clear()
             self.assertEqual(Bridge(self.cfg, self.source, SmartTube(self.cfg, other), other).step(), "manual_override")
-            self.assertEqual(self.commands, [])
+            self.assertEqual(self.sends(), [])
         finally:
             other.close()
 
@@ -272,7 +283,7 @@ class UserPriorityTests(unittest.TestCase):
         self.assertEqual(killpg.call_args.args[0], process.pid)
         process.communicate.assert_called_once_with()
 
-    def test_service_start_disarms_previous_control_without_adb(self):
+    def test_service_start_disarms_previous_control_without_sending(self):
         import main
         self.activate()
         self.source.name = "tv"
@@ -281,7 +292,7 @@ class UserPriorityTests(unittest.TestCase):
              patch("main.signal.signal"), patch("sys.argv", ["main.py", "--once"]):
             self.assertEqual(main.main(), 1)
         self.assertTrue(self.store.get_state("tv_control")["manual_override"])
-        self.assertEqual(self.commands, [])
+        self.assertEqual(self.sends(), [])
 
     def test_direct_send_without_persistent_ownership_is_blocked(self):
         with self.assertRaises(ManualOverride):

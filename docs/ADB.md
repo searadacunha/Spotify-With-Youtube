@@ -83,9 +83,9 @@ others (`adb disconnect`).
 - `push android/classes.dex /data/local/tmp/spotify-smarttube-<hash>.dex` and
   `shell CLASSPATH=… app_process /system/bin MediaProbe`: read the media sessions
   (default `tv` source only).
-- `shell dumpsys window windows`: verify SmartTube owns the focused window before sending.
+- `shell dumpsys window windows`: verify Spotify TV or SmartTube owns the focused window before sending.
 - `shell am start -W -a android.intent.action.VIEW -d https://www.youtube.com/watch?v=<id> -p <package>`:
-  replace the video, only inside the SmartTube session you explicitly enabled.
+  open the clip from Spotify TV, or replace the video inside the SmartTube session the bridge owns.
 
 No key event is sent (no wake-up): if the TV is asleep or SmartTube is not the
 focused app with the expected video playing, the bridge disarms itself instead of

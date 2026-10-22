@@ -25,10 +25,10 @@ flowchart LR
     subgraph source
         TV[Spotify TV media session] --> P[MediaProbe JSON] --> FT[from_tv → Track]
     end
-    G{Explicit TV ownership valid?} -->|yes| TV
+    G{Spotify in front or owned SmartTube?} -->|yes| TV
     G -->|no| MO[manual_override: cancel pending work]
     FT --> ST[Bridge.step]
-    ST -->|same track already handled| DUP[duplicate]
+    ST -->|same track as last sent| DUP[duplicate]
     ST -->|backoff active| RW[retry_wait]
     ST --> H[Bridge.handle]
     H --> L{Store.lookup<br/>fingerprint + TTL}
@@ -54,7 +54,8 @@ Return values of `Bridge.step()` (also the `status` field shown by `./smarttube 
   Web API `429` uses its `Retry-After` (60 s to 1 day).
 - Search failures and ambiguity use backoff per track while control remains valid.
   TV inspection failures and uncertain delivery disarm control instead of retrying.
-- Every real service start requires explicit `resume`. Control is checked on each
+- Every real service start is disarmed until Spotify TV is in front or an explicit
+  `resume`. Control is checked on each
   poll, during backoff and during external search/audio processes. Manual override
   cancels retries and kills the running download/process group.
 - `runtime` state (pid, source, status, time) is written to SQLite on every status
@@ -69,7 +70,7 @@ Resolution is synchronous. The bridge does **not** interrupt a running search wh
 Spotify changes track; it invalidates the result afterwards:
 
 1. `handle()` resolves track A (seconds to minutes);
-2. `SmartTube.check_control()` verifies the explicitly owned foreground playback;
+2. `SmartTube.check_control()` verifies Spotify TV in front or the owned SmartTube playback;
 3. the source is read again; if it returns nothing (paused, ad, podcast) or a
    different id, the step returns `stale` and **no intent is sent**;
 4. `last_done` is not updated, so the next step handles track B normally, and A's
@@ -91,13 +92,15 @@ Three independent mechanisms:
    resolution.
 2. **Handled history** (`handled_tracks`). Primary key: track id, TV target, package.
    An `attempted` row is committed before dispatch, then marked `sent` on confirmation.
-   Rules, metadata, restart, explicit resume and A → B → A never erase this history.
-   An uncertain send stays handled. The legacy last sent outcome is imported.
+   Only the latest row per TV target and package blocks: the same track is never sent
+   twice in a row (restart, rules change, metadata change, uncertain send), and
+   A → B → A sends A again. The legacy last sent outcome is imported.
 3. **TV control** (`state.tv_control`). `manual_override`, destination, generation,
    owned `video_id`, reason. Missing state and startup mean manual override.
-   `resume` explicitly adopts a video already playing in foreground SmartTube.
-   Every guard requires this same owned video in playback state 3 and SmartTube
-   in the focused window. Unknown state fails closed. Changing generation cancels
+   Spotify TV in the focused window claims control (new generation, no owned video
+   until the next send). `resume` explicitly adopts a video already playing in foreground SmartTube.
+   Otherwise every guard requires this same owned video in playback state 3 and
+   SmartTube in the focused window. Unknown state fails closed. Changing generation cancels
    older pending work; conditional state writes preserve concurrent explicit resumes.
 
 `last_done` remains diagnostic and suppresses negative matches for 24 hours under

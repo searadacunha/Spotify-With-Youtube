@@ -26,7 +26,7 @@ testing, or expect the first poll after wake-up to reconnect.
 
 **TV IP changed** — Edit `tv_target` in `config.json`, then
 `./smarttube stop && ./smarttube start`. The deduplication state is keyed by
-destination. Startup disarms sync; explicit resume is required before any sending.
+destination. Startup disarms sync until Spotify TV is in front or an explicit resume.
 
 ## SmartTube
 
@@ -35,12 +35,12 @@ destination. Startup disarms sync; explicit resume is required before any sendin
 means `smarttube_package` is wrong (`adb shell pm list packages | grep smarttube`).
 `Intent rejected by Android: … unable to resolve Intent` means the package does not
 handle YouTube URLs. A black screen with `Status: ok` is usually a screensaver or a
-sleeping panel. The bridge never wakes the TV; wake it yourself, open SmartTube,
-play a video, then explicitly `./smarttube resume` while the service is running.
+sleeping panel. The bridge never wakes the TV; wake it yourself, then pick the track
+in Spotify TV while the service is running.
 
 **The video starts but Spotify on the TV stops** — Expected: Android gives the
-audio focus to SmartTube. Opening Spotify TV disarms sync; return to SmartTube
-and explicitly resume to grant control again.
+audio focus to SmartTube. Pick the next track in Spotify TV: Spotify in front arms
+the bridge again.
 
 **Intent accepted but the video is not available** — The intent only proves
 delivery. Removed, private or geo-blocked videos still "succeed". The cache will
@@ -91,21 +91,24 @@ guards. `uncertain` verdicts are not failures: the bridge refuses to guess.
 ## User priority (manual override)
 
 **The service runs, Spotify changes tracks, nothing is sent; the log says
-`MANUAL_OVERRIDE_ACTIVE explicit resume required`** — Normal after every start.
-Open SmartTube on the TV, play any video, then `./smarttube resume` on the Mac.
+`MANUAL_OVERRIDE_ACTIVE open Spotify on the TV or resume`** — Normal after every start while
+another app is in front. Open Spotify on the TV and pick a track, or open SmartTube,
+play any video, then `./smarttube resume` on the Mac.
 
 **`MANUAL_OVERRIDE_ENTER <reason>` appeared and sync stopped** — You (or the TV)
 left SmartTube, paused, stopped or replaced the video the bridge sent, or the TV
-state could not be read. This is the intended behaviour; nothing resumes on its own.
+state could not be read. This is the intended behaviour; only Spotify TV in front or
+an explicit resume re-arms it.
 `./smarttube status` shows the `TV control` state and the reason.
 
 **`Resume blocked: Open SmartTube yourself before resuming`** — `resume` only
 adopts a SmartTube session that is already in the foreground and playing a video
 with a readable id. Start a video in SmartTube first, then run the command again.
 
-**`SEND_BLOCKED_ALREADY_HANDLED track=…`** — This track was already sent (or an
-attempt was recorded) for this TV target and package. The bridge never resends it
-automatically, even after a rules change or A → B → A.
+**`SEND_BLOCKED_ALREADY_HANDLED track=…`** — This track is the last one sent (or
+attempted) for this TV target and package. The bridge never sends the same track
+twice in a row, even after a restart or a rules change; after another track, it is
+sent again.
 
 **`SEND_BLOCKED_FOREGROUND_APP app=…`** — Another app owned the screen at the moment
 of the check (or the focus could not be determined); the bridge entered manual

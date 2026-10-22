@@ -6,6 +6,7 @@ from common import run
 from youtube_match import VIDEO_ID
 
 LOG = logging.getLogger(__name__)
+SPOTIFY_TV = "com.spotify.tv.android"
 
 
 class ManualOverride(Exception):
@@ -65,11 +66,31 @@ class SmartTube:
                     LOG.warning("MANUAL_OVERRIDE_ENTER %s", reason)
         raise ManualOverride(reason)
 
+    def claim_for_spotify(self, state, generation):
+        """The user is choosing music in Spotify on the TV: that is the request to show its clip."""
+        if not state or state.get("manual_override") is not False or state.get("destination") != self.destination:
+            current = {"manual_override": False, "destination": self.destination,
+                       "generation": uuid.uuid4().hex, "video_id": None, "reason": "spotify_foreground"}
+            if not self.store.replace_control(state, current):
+                raise ManualOverride("Control state changed; Spotify claim cancelled")
+            LOG.info("MANUAL_OVERRIDE_EXIT Spotify in front")
+            state = current
+        self.override_logged = False
+        if generation is not None and generation != state.get("generation"):
+            raise ManualOverride("Control session changed; pending work cancelled")
+        return state
+
     def check_control(self, generation=None):
         state = self.store.get_state("tv_control") if self.store is not None else None
+        try:
+            app = self.foreground_app() if self.store is not None else None
+        except (RuntimeError, OSError, ValueError) as exc:
+            app = exc
+        if app == SPOTIFY_TV:
+            return self.claim_for_spotify(state, generation)
         if not state or state.get("manual_override") is not False:
             if not self.override_logged:
-                LOG.info("MANUAL_OVERRIDE_ACTIVE explicit resume required")
+                LOG.info("MANUAL_OVERRIDE_ACTIVE open Spotify on the TV or resume")
                 self.override_logged = True
             if state is None:
                 self.enter_override("No explicit TV control session")
@@ -80,7 +101,8 @@ class SmartTube:
         if state.get("destination") != self.destination or not state.get("video_id") or not state.get("generation"):
             self.enter_override("TV ownership missing or destination changed")
         try:
-            app = self.foreground_app()
+            if isinstance(app, Exception):
+                raise app
             if app != self.cfg["smarttube_package"]:
                 LOG.warning("SEND_BLOCKED_FOREGROUND_APP app=%s", app or "unknown")
                 self.enter_override("Foreground app is " + str(app))

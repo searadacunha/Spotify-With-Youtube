@@ -34,7 +34,7 @@ It also cancelled obsolete searches when Spotify changed tracks before the YouTu
 
 And after the user-priority guard was added, the service became **fail-closed**:
 
-> if SmartTube is no longer the foreground app, if playback was changed manually, or if the bridge can no longer prove that it still owns playback, it sends nothing.
+> it sends a video only while you are in Spotify on the TV, or in the SmartTube clip it opened itself. Another app, a video you started yourself, or a TV state it cannot read: it sends nothing.
 
 The matching path has been exercised on real hardware.
 
@@ -253,13 +253,10 @@ Then I found the more important problem:
 
 So the delivery path now starts disarmed.
 
-After starting the service, the user must explicitly run:
+It arms itself only when:
 
-```sh
-./smarttube resume
-```
-
-The bridge then adopts the current SmartTube playback.
+- Spotify is the app in front on the TV: choosing a song there is the request to see its clip
+- or the user explicitly runs `./smarttube resume` while a SmartTube video plays
 
 If the user:
 
@@ -279,7 +276,7 @@ It does not keep sending videos.
 
 Returning to SmartTube alone does not re-enable automation.
 
-The user must explicitly resume it.
+Going back to Spotify on the TV does, or an explicit resume.
 
 ---
 
@@ -299,13 +296,13 @@ STALE
 
 The result is discarded.
 
-The project also keeps handled-track history so that a track already sent or attempted for a destination is not automatically resent across:
+The project also remembers the last track sent or attempted for a destination, so the same track is never sent twice in a row, even across:
 
 - restarts
-- A → B → A playback
 - matching-rule changes
+- uncertain deliveries
 
-This exists specifically to prevent an old result from unexpectedly taking over the TV later.
+A → B → A sends A again: playing a song later brings its clip back.
 
 ---
 
@@ -324,7 +321,7 @@ flowchart TD
     C -->|uncertain / mismatch| X[Abstain]
     V --> ST{Spotify still on same track?}
     ST -->|no| stale[Discard stale result]
-    ST -->|yes| G{SmartTube control still valid?}
+    ST -->|yes| G{Spotify in front or owned SmartTube?}
     G -->|no| M[Manual override]
     G -->|yes| I[ADB VIEW intent]
     I --> TV[SmartTube]
@@ -426,9 +423,9 @@ The entire matching path runs, but no video is launched.
 
 It starts **disarmed**.
 
-Open SmartTube yourself and play a video.
+Pick a song in Spotify on the TV: Spotify in front arms the bridge.
 
-Then:
+Or open SmartTube yourself, play a video, then:
 
 ```sh
 ./smarttube resume
@@ -482,7 +479,7 @@ The repository separates hardware observations from code that only exists in tes
 ## IMPLEMENTED and unit-tested
 
 - persistent user-priority / manual-override guard
-- handled-track history across restarts
+- no same-track resend in a row, across restarts
 - Spotify Desktop source on macOS
 - Spotify Web API source
 - direct `./smarttube match` command

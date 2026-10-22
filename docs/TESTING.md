@@ -43,7 +43,8 @@ use that TV target; assertions compare against the loaded value, never a literal
 
 ## User priority regression coverage
 
-`test_user_priority.py` mocks every ADB call and covers explicit activation, official
+`test_user_priority.py` mocks every ADB call and covers explicit activation, Spotify TV
+in front claiming control, official
 YouTube/other apps/unknown focus, interrupted or replaced playback, persisted override,
 Spotify changes and A → B → A during override, matching policy changes, cancellation
 during resolution and backoff, killed subprocesses, uncertain sends, restart disarming,
@@ -61,13 +62,13 @@ touching ADB, the probe or the sources:
 2. Manual intent ([SMARTTUBE.md](SMARTTUBE.md#manual-test-do-this-first)).
 3. `./smarttube test` while Spotify TV plays a track with a known official video:
    expect `SELECTED <id>` and `DRY-RUN`.
-4. `./smarttube start`: expect `MANUAL_OVERRIDE_ACTIVE` and no intent, whatever
-   Spotify plays (startup is disarmed).
-5. Open SmartTube on the TV, play any video, `./smarttube resume`: expect
+4. `./smarttube start` while SmartTube or another app is in front: expect
+   `MANUAL_OVERRIDE_ACTIVE` and no intent, whatever Spotify plays (startup is disarmed).
+5. Pick a track in Spotify on the TV: expect `MANUAL_OVERRIDE_EXIT Spotify in front`
+   then `SENT`. Or open SmartTube, play any video, `./smarttube resume`: expect
    `MANUAL_OVERRIDE_EXIT explicit resume video=<id>`.
-6. Change track in Spotify (without leaving SmartTube on the TV, for example from
-   the Spotify app on a phone): expect `SENT` within the resolution time; change
-   back to the previous track: expect `SEND_BLOCKED_ALREADY_HANDLED`.
+6. Change track in Spotify: expect `SENT` within the resolution time; replay the same
+   track right away: expect `SEND_BLOCKED_ALREADY_HANDLED`; A → B → A: expect `SENT`.
 7. Open another app on the TV: expect `SEND_BLOCKED_FOREGROUND_APP` then
    `MANUAL_OVERRIDE_ENTER`; go back to SmartTube: nothing is sent until step 5 again.
 8. `./smarttube stop && ./smarttube start` while a video plays: the service must be

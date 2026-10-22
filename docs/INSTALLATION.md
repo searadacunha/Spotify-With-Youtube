@@ -85,10 +85,10 @@ The first resolution of a track can take tens of seconds.
 ./smarttube logs       # Ctrl-C stops the tail only
 ```
 
-The service starts disarmed. Open SmartTube yourself, play a video, then run
-`./smarttube resume` to explicitly adopt that playback. This command launches no
-video. Switching to Spotify TV or any other app disarms sync again; after returning
-and starting playback, another explicit resume is required. Details and
+The service starts disarmed. Pick a song in Spotify on the TV: Spotify in front arms
+it. Or open SmartTube yourself, play a video, then run `./smarttube resume` to
+explicitly adopt that playback (this command launches no video). Switching to any
+other app disarms sync again; going back to Spotify TV re-arms it. Details and
 uninstallation: [docs/MACOS_SERVICE.md](MACOS_SERVICE.md).
 
 ## Upgrading
@@ -101,8 +101,8 @@ git pull
 ./smarttube start
 ```
 
-After an upgrade/start, explicitly resume again while SmartTube is already playing.
-A new `SCORING_VERSION` invalidates cached matching decisions but never handled history. If yt-dlp stops
+After an upgrade/start, pick a song in Spotify TV (or resume while SmartTube plays).
+A new `SCORING_VERSION` invalidates cached matching decisions but never the last sent track. If yt-dlp stops
 working because YouTube changed, bump `yt-dlp` **and** `yt-dlp-ejs` together to the
 versions yt-dlp declares compatible.
 

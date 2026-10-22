@@ -5,7 +5,7 @@ import logging
 import re
 
 from common import ROOT, Track
-from smarttube_adb import SmartTube
+from smarttube_adb import SPOTIFY_TV, SmartTube
 
 LOG = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ LOG = logging.getLogger(__name__)
 def from_tv(sessions):
     if not isinstance(sessions, list) or not all(isinstance(s, dict) for s in sessions):
         raise ValueError("Invalid TV media session response")
-    playing = [s for s in sessions if s.get("package") == "com.spotify.tv.android"
+    playing = [s for s in sessions if s.get("package") == SPOTIFY_TV
                and s.get("state") == 3]
     if len(playing) > 1:
         raise ValueError("Several active Spotify TV sessions: ambiguous playback")
