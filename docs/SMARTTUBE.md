@@ -95,12 +95,17 @@ is required before automatic sending can be enabled for them.
 ## Audio focus and Spotify TV
 
 When SmartTube starts playing, Android gives it the audio focus and Spotify TV
-**was paused** in the observed sessions (sometimes both sessions reported
-*playing* briefly). Consequences:
+**is paused** (sometimes both sessions report *playing* briefly): the clip plays
+in place of the song. So that songs keep following each other in Spotify, not in
+SmartTube's autoplay:
 
-- a Spotify playlist does not advance by itself while a video plays; you pick the
-  next track in Spotify TV, which arms the bridge while Spotify is in front;
-- the bridge does not resume Spotify, skip tracks or synchronise pause/seek/volume.
+- about a second before the clip it sent ends, the bridge moves Spotify TV to its
+  next track (`MediaProbe next`) and brings Spotify back in front, which sends the
+  next clip;
+- if SmartTube's autoplay replaces the clip within its last 30 seconds (SponsorBlock
+  can skip an outro), the bridge does the same;
+- Spotify is never skipped while it is already playing; pause, seek and volume are
+  not synchronised.
 
-This is a property of Android audio focus and of the two apps, not something the
-bridge controls. See [LIMITATIONS.md](LIMITATIONS.md).
+Verified on the TV on 2026-10-23: the Righteous clip ended, Spotify moved to
+Wishing Well and its clip was sent 17 s later. See [LIMITATIONS.md](LIMITATIONS.md).

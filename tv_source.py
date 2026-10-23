@@ -81,7 +81,7 @@ class TVSource:
         self.pages[track_id] = (time.monotonic() + 60, found)
         return found
 
-    def sessions(self):
+    def sessions(self, *command):
         try:
             if not self.ready:
                 if not self.dex.is_file():
@@ -93,7 +93,7 @@ class TVSource:
                 self.ready = True
                 LOG.info("Spotify TV reader ready over ADB (%s)", self.tv.cfg["tv_target"])
             output = self.tv.adb("shell", f"CLASSPATH={self.remote}",
-                                 "app_process", "/system/bin", "MediaProbe")
+                                 "app_process", "/system/bin", "MediaProbe", *command)
             sessions = json.loads(output)
             if not isinstance(sessions, list) or not all(isinstance(s, dict) for s in sessions):
                 raise ValueError("Invalid TV media session response")

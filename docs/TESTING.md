@@ -37,6 +37,7 @@ spectra for the audio verdicts, so they run anywhere, including GitHub Actions
 | TV source parsing: video mode, ads, podcasts, missing duration, reconnect | `BoundaryTests.test_tv_*` |
 | ADB targeting, reconnect, exit-code-0 errors, id injection | `test_all_adb_commands_have_target`, `test_adb_reconnect`, `test_android_zero_exit_error_is_failure`, `test_injection_id_never_reaches_adb` |
 | `match` command builds a Spotify-like track, reports the most-viewed fallback | `test_cli.MatchCommandTests` |
+| Clip end → Spotify's next track and its clip; autoplay only counts near the end; loading clip keeps control | `test_user_priority.test_clip_end_moves_spotify_to_next_track_and_sends_its_clip`, `test_autoplay_replacing_the_clip_hands_back_only_near_its_end`, `test_clip_still_loading_after_send_keeps_control` |
 | No personal paths, private IPs or credentials in published files | `test_repo_hygiene.RepoHygieneTests` |
 
 `load_config()` reads `config.json` when present, so tests on a configured machine

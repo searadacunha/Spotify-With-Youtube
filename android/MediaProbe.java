@@ -7,7 +7,7 @@ import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Read-only media metadata through the existing ADB shell permission. */
+/** Media metadata through the existing ADB shell permission; "next" also moves Spotify TV to its next track. */
 public final class MediaProbe {
     public static void main(String[] args) {
         try {
@@ -27,12 +27,21 @@ public final class MediaProbe {
                 }
             }
             MediaSessionManager manager = (MediaSessionManager) context.getSystemService(Context.MEDIA_SESSION_SERVICE);
+            boolean next = args.length > 0 && args[0].equals("next"), spotify = false;
             JSONArray result = new JSONArray();
             for (MediaController controller : manager.getActiveSessions(null)) {
                 String pkg = controller.getPackageName();
                 if (!pkg.equals("com.spotify.tv.android") && !pkg.equals("org.smarttube.stable")) continue;
                 JSONObject item = new JSONObject().put("package", pkg);
                 PlaybackState state = controller.getPlaybackState();
+                if (next && pkg.equals("com.spotify.tv.android")) {
+                    spotify = true;
+                    // Already playing means someone picked a track: never skip it.
+                    if (state == null || state.getState() != PlaybackState.STATE_PLAYING) {
+                        controller.getTransportControls().skipToNext();
+                        controller.getTransportControls().play();
+                    }
+                }
                 item.put("state", state == null ? -1 : state.getState());
                 item.put("position_ms", state == null ? -1 : state.getPosition());
                 MediaMetadata meta = controller.getMetadata();
@@ -48,6 +57,10 @@ public final class MediaProbe {
                     item.put("advertisement", meta.getLong("android.media.metadata.ADVERTISEMENT") != 0);
                 }
                 result.put(item);
+            }
+            if (next && !spotify) {
+                System.err.println("No Spotify TV media session");
+                System.exit(1);
             }
             System.out.println(result.toString());
             System.exit(0);

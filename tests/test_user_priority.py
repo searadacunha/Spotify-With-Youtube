@@ -32,6 +32,7 @@ class UserPriorityTests(unittest.TestCase):
         self.app = self.cfg["smarttube_package"]
         self.video = "A" * 11
         self.state = 3
+        self.clip = {}
         self.commands = []
         adb = patch("smarttube_adb.run", side_effect=self.adb)
         adb.start()
@@ -63,7 +64,11 @@ class UserPriorityTests(unittest.TestCase):
         if args[0] == "push":
             return "pushed"
         if args[0] == "shell" and "MediaProbe" in args:
-            return json.dumps([{"package": self.cfg["smarttube_package"], "state": self.state, "id": self.video}])
+            return json.dumps([{"package": self.cfg["smarttube_package"], "state": self.state, "id": self.video,
+                                **self.clip}])
+        if args[:4] == ["shell", "monkey", "-p", SPOTIFY_TV]:
+            self.app = SPOTIFY_TV
+            return "Events injected: 1"
         if args[:3] == ["shell", "am", "start"]:
             self.video = args[args.index("-d") + 1].split("v=")[1]
             return "Status: ok"
@@ -75,6 +80,9 @@ class UserPriorityTests(unittest.TestCase):
 
     def sends(self):
         return [c for c in self.commands if c[:3] == ["shell", "am", "start"]]
+
+    def skips(self):
+        return [c for c in self.commands if c[-1] == "next"]
 
     def test_default_requires_explicit_resume(self):
         self.assertEqual(self.bridge.step(), "manual_override")
@@ -137,6 +145,46 @@ class UserPriorityTests(unittest.TestCase):
                 self.state, self.video = state, video
                 self.assertEqual(self.bridge.step(), "manual_override")
                 self.assertEqual(self.sends(), [])
+
+    def test_clip_end_moves_spotify_to_next_track_and_sends_its_clip(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        following = Track("1" * 22, "Hate Me", ("Ellie Goulding, Juice WRLD",), 205.5, "Hate Me")
+        self.store.remember(following, self.cfg, {"id": "C" * 11, "title": "Hate Me"})
+        self.source.current.return_value = following
+        with patch("smarttube_adb.time.sleep") as sleep:
+            self.assertEqual(self.bridge.step(), "sent")
+        sleep.assert_called_once_with(3)
+        self.assertEqual(len(self.skips()), 1)
+        self.assertEqual(self.video, "C" * 11)
+        self.assertFalse(self.store.get_state("tv_control")["manual_override"])
+
+    def test_autoplay_replacing_the_clip_hands_back_only_near_its_end(self):
+        for remaining, expected in [(20000, "idle"), (120000, "manual_override")]:
+            with self.subTest(remaining=remaining):
+                self.app, self.video = self.cfg["smarttube_package"], "A" * 11
+                self.clip = {"duration_ms": 200000, "position_ms": 200000 - remaining}
+                self.tv = SmartTube(self.cfg, self.store)
+                self.bridge = Bridge(self.cfg, self.source, self.tv, self.store)
+                self.activate()
+                self.source.current.return_value = None  # Spotify paused under the clip
+                self.assertEqual(self.bridge.step(), "idle")
+                self.video = "C" * 11  # SmartTube's autoplay
+                self.assertEqual(self.bridge.step(), expected)
+                self.assertEqual(len(self.skips()), int(expected == "idle"))
+
+    def test_clip_still_loading_after_send_keeps_control(self):
+        self.app = SPOTIFY_TV
+        self.assertEqual(self.bridge.step(), "sent")
+        self.app, self.state, self.video = self.cfg["smarttube_package"], 2, "A" * 11  # previous clip's session
+        self.assertEqual(self.bridge.step(), "duplicate")
+        self.app = None
+        self.assertEqual(self.bridge.step(), "duplicate")
+        self.tv.sent_at -= 60
+        self.app, self.state, self.video = self.cfg["smarttube_package"], 6, self.candidate["id"]
+        self.assertEqual(self.bridge.step(), "duplicate")
+        self.state = 2
+        self.assertEqual(self.bridge.step(), "manual_override")
 
     def test_retry_cancelled_and_never_runs_during_override(self):
         self.activate()

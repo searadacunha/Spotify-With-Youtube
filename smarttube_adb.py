@@ -1,5 +1,7 @@
 import logging
+import math
 import re
+import time
 import uuid
 
 from common import run
@@ -7,6 +9,10 @@ from youtube_match import VIDEO_ID
 
 LOG = logging.getLogger(__name__)
 SPOTIFY_TV = "com.spotify.tv.android"
+# On the TV, SmartTube took 4 to 6 s after a send to report the new clip as playing.
+STARTUP_SECONDS = 20
+# SponsorBlock can skip a clip's outro, so autoplay may replace it this long before its end.
+OUTRO_SECONDS = 30
 
 
 class ManualOverride(Exception):
@@ -20,6 +26,7 @@ class SmartTube:
         self.destination = [cfg["tv_target"], cfg["smarttube_package"]]
         self.probe = None
         self.override_logged = False
+        self.sent_at, self.clip_end, self.handed_off = 0, math.inf, None
 
     def adb(self, *args):
         return run([self.cfg["adb_path"], "-s", self.cfg["tv_target"], *args],
@@ -55,12 +62,38 @@ class SmartTube:
             from tv_source import TVSource
             self.probe = TVSource(self.cfg, tv=self)
         sessions = [s for s in self.probe.sessions() if s.get("package") == self.cfg["smarttube_package"]]
-        if len(sessions) != 1 or sessions[0].get("state") != 3:
-            raise ValueError("SmartTube playback interrupted or ambiguous")
+        # 3 playing, 6 buffering.
+        if len(sessions) != 1 or sessions[0].get("state") not in (3, 6):
+            raise ValueError("SmartTube playback interrupted or ambiguous: states "
+                             + str([s.get("state") for s in sessions]))
         identifier = sessions[0].get("id")
         if not isinstance(identifier, str) or not VIDEO_ID.fullmatch(identifier):
             raise ValueError("SmartTube video identity unavailable")
-        return identifier
+        return sessions[0]
+
+    def clip_over(self, video_id, session):
+        """The clip we sent is ending, or autoplay just replaced it at its end."""
+        if video_id == self.handed_off:
+            return False
+        if session["id"] != video_id:
+            return time.monotonic() >= self.clip_end - OUTRO_SECONDS
+        duration, position = session.get("duration_ms"), session.get("position_ms")
+        if not isinstance(duration, int) or duration <= 0 or not isinstance(position, int):
+            return False
+        remaining = (duration - position) / 1000
+        self.clip_end = time.monotonic() + remaining
+        if remaining > self.cfg["poll_seconds"] + 5:
+            return False
+        time.sleep(max(0, remaining - 1))  # hand over just before SmartTube's autoplay starts
+        return True
+
+    def next_on_spotify(self, video_id):
+        """Songs follow each other in Spotify: its next track comes back in front and gets its own clip."""
+        self.handed_off = video_id
+        self.probe.sessions("next")
+        # Like the TV launcher: "am start" does not resolve a launcher intent without a component.
+        self.adb("shell", "monkey", "-p", SPOTIFY_TV, "-c", "android.intent.category.LEANBACK_LAUNCHER", "1")
+        LOG.info("CLIP_ENDED video=%s: Spotify plays its next track", video_id)
 
     def enter_override(self, reason):
         if self.store is not None:
@@ -106,13 +139,19 @@ class SmartTube:
             raise ManualOverride("Control session changed; pending work cancelled")
         if state.get("destination") != self.destination or not state.get("video_id") or not state.get("generation"):
             self.enter_override("TV ownership missing or destination changed")
+        if app in (self.cfg["smarttube_package"], None) and time.monotonic() < self.sent_at + STARTUP_SECONDS:
+            return state  # still loading: no focus yet, buffering, or the previous clip's session
         try:
             if isinstance(app, Exception):
                 raise app
             if app != self.cfg["smarttube_package"]:
                 LOG.warning("SEND_BLOCKED_FOREGROUND_APP app=%s", app or "unknown")
                 self.enter_override("Foreground app is " + str(app))
-            if self.playback() != state["video_id"]:
+            session = self.playback()
+            if self.clip_over(state["video_id"], session):
+                self.next_on_spotify(state["video_id"])
+                return self.check_control(generation)  # Spotify in front keeps the bridge armed
+            if session["id"] != state["video_id"]:
                 self.enter_override("SmartTube video manually replaced")
             # Re-read focus after the media probe, immediately before authorizing a send.
             if self.foreground_app() != self.cfg["smarttube_package"]:
@@ -131,7 +170,7 @@ class SmartTube:
             if self.foreground_app() != self.cfg["smarttube_package"]:
                 LOG.warning("SEND_BLOCKED_FOREGROUND_APP resume requires SmartTube")
                 self.enter_override("Open SmartTube yourself before resuming")
-            video_id = self.playback()
+            video_id = self.playback()["id"]
             if self.foreground_app() != self.cfg["smarttube_package"]:
                 self.enter_override("Foreground changed during resume")
         except (RuntimeError, OSError, ValueError) as exc:
@@ -166,6 +205,7 @@ class SmartTube:
             self.enter_override("Uncertain send; no automatic retry: " + str(exc))
         self.store.confirm_handled(track_id, self.destination)
         self.store.replace_control(state, {**state, "video_id": video_id})
+        self.sent_at, self.clip_end, self.handed_off = time.monotonic(), math.inf, None
         LOG.info("SENT video=%s target=%s | %s", video_id,
                  self.cfg["tv_target"], " ".join(out.split()))
         return True
