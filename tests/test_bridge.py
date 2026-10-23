@@ -6,7 +6,9 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-from common import Track, load_config
+import sys
+
+from common import Track, load_config, operation_guard, parallel, run
 from main import Bridge
 from smarttube_adb import SmartTube, ManualOverride
 from spotify_source import from_local, from_web
@@ -233,6 +235,17 @@ class BoundaryTests(unittest.TestCase):
             self.assertIsNone(source.track_page("3" * 22))
             self.assertIsNone(source.track_page("3" * 22))
             self.assertEqual(urlopen.call_count, 2)
+
+    def test_parallel_keeps_order_and_dies_with_the_tv_guard(self):
+        self.assertEqual(parallel(lambda x: x * 2, [3, 1, 2]), [6, 2, 4])
+        self.assertEqual(parallel(lambda x: x, []), [])
+
+        def user_took_the_tv():
+            raise ManualOverride("Foreground app is com.google.android.youtube.tv")
+        started = time.monotonic()
+        with operation_guard(user_took_the_tv), self.assertRaises(ManualOverride):
+            parallel(lambda _: run([sys.executable, "-c", "import time; time.sleep(30)"], 60), [1, 2])
+        self.assertLess(time.monotonic() - started, 5)
 
     def test_tv_source_does_not_use_macos_or_oauth(self):
         from spotify_source import SpotifySource
