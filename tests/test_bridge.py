@@ -10,7 +10,7 @@ from common import Track, load_config
 from main import Bridge
 from smarttube_adb import SmartTube, ManualOverride
 from spotify_source import from_local, from_web
-from tv_source import TVSource, from_tv
+from tv_source import TVSource, from_tv, page_metadata
 from storage import Store
 from youtube_match import candidate_artists, rank, resolve, score, song_title, video_details
 
@@ -202,6 +202,37 @@ class BoundaryTests(unittest.TestCase):
     def test_tv_video_metadata_does_not_invent_artist(self):
         bad = {**self.tv_session(), "title": "Righteous", "artist": "Righteous", "album": "Righteous"}
         self.assertIsNone(from_tv([bad]))
+
+    def test_tv_video_mode_reads_artist_from_track_page(self):
+        video = {**self.tv_session(), "title": "Lucid Dreams", "artist": "Lucid Dreams", "album": "Lucid Dreams"}
+        t = from_tv([video], lambda track_id: ("Juice WRLD", "Lucid Dreams") if track_id == "2" * 22 else None)
+        self.assertEqual((t.id, t.title, t.artists, t.duration, t.album),
+                         ("2" * 22, "Lucid Dreams", ("Juice WRLD",), 231, "Lucid Dreams"))
+        self.assertIsNone(from_tv([video], lambda track_id: None))
+        remix = {**video, "title": "SHAKE IT TO THE MAX (FLY) - REMIX", "artist": "SHAKE IT TO THE MAX (FLY) [REMIX]",
+                 "album": "SHAKE IT TO THE MAX (FLY) [REMIX]"}
+        self.assertEqual(from_tv([remix], lambda track_id: ("MOLIY", "")).artists, ("MOLIY",))
+
+    def test_track_page_metadata_matches_tv_format(self):
+        page = ('<meta property="og:description" content="Marshmello, Juice WRLD · One More Drink She Said · Song · 2023"/>'
+                '<meta name="music:musician_description" content="Marshmello, Juice WRLD"/>')
+        self.assertEqual(page_metadata(page), ("Marshmello, Juice WRLD", "One More Drink She Said"))
+        self.assertEqual(page_metadata('<meta name="music:musician_description" content="Simon &amp; Garfunkel"/>'),
+                         ("Simon & Garfunkel", ""))
+        with self.assertRaises(ValueError):
+            page_metadata("<html></html>")
+
+    def test_track_page_read_once_per_track(self):
+        with patch("tv_source.SmartTube"), patch("tv_source.urllib.request.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = \
+                b'<meta name="music:musician_description" content="Juice WRLD"/>'
+            source = TVSource(load_config())
+            self.assertEqual(source.track_page("2" * 22), ("Juice WRLD", ""))
+            self.assertEqual(source.track_page("2" * 22), ("Juice WRLD", ""))
+            urlopen.side_effect = OSError("offline")
+            self.assertIsNone(source.track_page("3" * 22))
+            self.assertIsNone(source.track_page("3" * 22))
+            self.assertEqual(urlopen.call_count, 2)
 
     def test_tv_source_does_not_use_macos_or_oauth(self):
         from spotify_source import SpotifySource

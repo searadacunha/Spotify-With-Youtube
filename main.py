@@ -201,7 +201,7 @@ def main():
                                 "status": status, "time": time.time()})
                 last_heartbeat = time.monotonic()
             if status == "idle" and previous_status != "idle":
-                LOG.info("IDLE: Spotify closed, paused, or not playing a readable music track (Spotify TV video mode: switch to audio)")
+                LOG.info("IDLE: Spotify closed, paused, or not playing a music track")
             previous_status = status
             if args.once:
                 if status == "idle":

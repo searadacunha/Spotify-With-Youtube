@@ -51,8 +51,8 @@ nothing: open an issue with `logs/last-match.json`.
 ## Matching
 
 **Wrong video selected** — Look at `logs/last-match.json` for the ranking and the
-reasons. Check the Spotify title first: in Spotify TV's **video mode** the artist and
-album fields repeat the title; switch Spotify TV to audio mode. If the candidate
+reasons. Check the `SPOTIFY` log line first: in Spotify TV's **video mode** the artist
+comes from the track's public Spotify page, not from the TV. If the candidate
 has the exact edition, an official source and a close duration, the rules have no
 way to prefer another: open an issue with the report. Do not add a per-track
 exception; the rules are generic by design.
@@ -127,9 +127,10 @@ With `macos`: the desktop app must be running and playing locally; grant the
 Automation permission macOS asks for. With `web`: `./smarttube login` again if the
 token expired.
 
-**`IDLE … (Spotify TV video mode: switch to audio)` while music plays** — Spotify TV's
-video mode repeats the title in the artist and album fields. Choose *Switch to audio*
-in Spotify TV; the bridge picks the track up within one poll.
+**`Spotify video mode: track page unreadable` while music plays** — Spotify TV's
+video mode repeats the title in the artist and album fields, so the artist is read
+from `https://open.spotify.com/track/<id>`. Check the Mac's network; the read is
+retried every minute, or choose *Switch to audio* in Spotify TV.
 
 **`Spotify rate limited: retry after Ns`** — Web API only; the bridge waits as told.
 
