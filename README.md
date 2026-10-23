@@ -8,6 +8,8 @@ Play a song on **Spotify**.
 
 Change the song on Spotify, and the video follows.
 
+When the clip ends, Spotify moves to the next song, and its video follows too.
+
 No manual search. No switching apps to look for the clip. No remote-control typing.
 
 Spotify remains the way you choose the music.
@@ -38,7 +40,9 @@ And after the user-priority guard was added, the service became **fail-closed**:
 
 The matching path has been exercised on real hardware.
 
-The newer user-priority guard is implemented and unit-tested, but still needs a final end-to-end hardware validation.
+On 2026-10-23, five clips in a row ended on the TV, and each time Spotify moved to the next song and its video was sent automatically, without touching the remote.
+
+The rest of the user-priority guard (other apps, pauses, a video you pick yourself) is unit-tested; its full hardware checklist is not finished.
 
 ---
 
@@ -277,6 +281,14 @@ Returning to SmartTube alone does not re-enable automation.
 
 Going back to Spotify on the TV does, or an explicit resume.
 
+While a clip plays, SmartTube has the audio focus and Spotify is paused.
+
+So when the clip the bridge sent ends, the bridge moves Spotify to its next track and brings Spotify back in front, which sends the next clip.
+
+The songs follow each other in Spotify, not in SmartTube's autoplay.
+
+A track Spotify is already playing is never skipped.
+
 ---
 
 # Protection Against Old or Duplicate Sends
@@ -473,6 +485,8 @@ The repository separates hardware observations from code that only exists in tes
 - audio verification
 - stale-result cancellation
 - SmartTube delivery by Android VIEW intent
+- Spotify in front arming the bridge
+- clip end → Spotify's next track → its clip (five times in a row, 2026-10-23)
 - positive / negative matching cache
 - macOS background service
 - dry-run mode
@@ -487,7 +501,8 @@ The repository separates hardware observations from code that only exists in tes
 
 The user-priority guard was added after the earlier real-TV matching runs.
 
-On the TV (2026-10-22), Spotify in front armed it and one clip was sent; the full
+On the TV, Spotify in front armed it and the end-of-clip handoff worked five times in a row;
+disarming on other apps, pauses and manual videos is unit-tested only, and the full
 checklist in `docs/TESTING.md` is not finished.
 
 That distinction is deliberate.
@@ -504,7 +519,7 @@ Run:
 
 Current suite:
 
-**96 unit tests**
+**107 unit tests**
 
 covering:
 
@@ -523,6 +538,7 @@ covering:
 - ADB targeting
 - ADB failures
 - user-priority guard
+- end-of-clip handoff to Spotify's next track
 - repository hygiene
 
 GitHub Actions runs the suite on Python **3.12 and 3.13** and rebuilds the Android probe from source.
@@ -556,6 +572,7 @@ NO VERIFIED CLIP
 NO RELIABLE MATCH
 STALE
 DRY-RUN
+CLIP_ENDED
 MANUAL_OVERRIDE_ENTER
 MANUAL_OVERRIDE_ACTIVE
 SEND_BLOCKED_FOREGROUND_APP
@@ -590,8 +607,8 @@ Current limits include:
 - YouTube search is bounded and cannot prove that no better upload exists anywhere
 - audio verification compares YouTube publications, not Spotify's own stream
 - the audio thresholds are empirical
-- Spotify → SmartTube handoff means SmartTube takes TV playback focus
-- the latest manual-override guard still needs final real-TV validation
+- SmartTube takes the TV's audio focus: Spotify pauses during each clip and moves on when it ends; pausing the clip or starting another video stops that chain until you pick a song in Spotify
+- the full manual-override checklist is not finished on real hardware
 - ADB foreground-state verification and intent dispatch are separate operations, so they are not perfectly atomic
 
 The project therefore fails closed whenever state cannot be trusted.
@@ -627,7 +644,7 @@ See [docs/SECURITY.md](docs/SECURITY.md).
 
 Possible next steps:
 
-- final hardware validation of the user-priority guard
+- finish the hardware checklist of the user-priority guard
 - Linux host support
 - Raspberry Pi / always-on host
 - Windows support

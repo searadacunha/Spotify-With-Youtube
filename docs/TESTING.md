@@ -6,7 +6,7 @@
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-96 tests in five files. They mock yt-dlp, ADB and the sources, and use synthetic
+107 tests in five files. They mock yt-dlp, ADB and the sources, and use synthetic
 spectra for the audio verdicts, so they run anywhere, including GitHub Actions
 (`.github/workflows/tests.yml`, Python 3.12 and 3.13; a second job rebuilds
 `android/classes.dex` from source and checks it is byte-identical).
