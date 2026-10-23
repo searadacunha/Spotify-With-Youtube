@@ -107,5 +107,5 @@ SmartTube's autoplay:
 - Spotify is never skipped while it is already playing; pause, seek and volume are
   not synchronised.
 
-Verified on the TV on 2026-10-23: the Righteous clip ended, Spotify moved to
-Wishing Well and its clip was sent 17 s later. See [LIMITATIONS.md](LIMITATIONS.md).
+Verified on the TV on 2026-10-23: five clips in a row ended and each time Spotify
+moved to its next track, whose clip was sent 14 to 22 s later. See [LIMITATIONS.md](LIMITATIONS.md).
