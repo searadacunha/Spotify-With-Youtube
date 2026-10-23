@@ -108,4 +108,4 @@ SmartTube's autoplay:
   not synchronised.
 
 Verified on the TV on 2026-10-23: five clips in a row ended and each time Spotify
-moved to its next track, whose clip was sent 14 to 22 s later. See [LIMITATIONS.md](LIMITATIONS.md).
+moved to its next track, whose clip was sent 12 to 22 s later. See [LIMITATIONS.md](LIMITATIONS.md).
