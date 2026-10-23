@@ -7,7 +7,7 @@ import tempfile
 import time
 
 import numpy as np
-from common import check_operation, communicate_checked
+from common import check_operation, communicate_checked, parallel
 
 RATE, HOP, FRAME = 16000, 256, 1024
 METHOD = "spectral-3-windows-v1"
@@ -114,6 +114,11 @@ class AudioComparator:
             return self.decoded[identifier]
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("Audio comparison timeout; nothing sent") from exc
+
+    def preload(self, candidates, timeout):
+        """Download side by side; compare() then reads the decoded audio."""
+        deadline = time.monotonic() + timeout
+        parallel(lambda candidate: self.load(candidate, deadline), candidates)
 
     def compare(self, reference, candidate, duration, timeout):
         deadline = time.monotonic() + timeout

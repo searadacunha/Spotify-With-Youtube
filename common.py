@@ -4,7 +4,9 @@ import re
 import subprocess
 import os
 import signal
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -30,6 +32,31 @@ def check_operation():
         with operation_guard(None):
             check()
     return check is not None
+
+
+def parallel(function, items, workers=4):
+    """Run blocking calls side by side, results in order. TV ownership checks stay on
+    this thread (SQLite, ADB); a cancelled batch kills its workers' processes."""
+    cancelled = threading.Event()
+
+    def stop():
+        if cancelled.is_set():
+            raise RuntimeError("Cancelled with its batch")
+
+    def call(item):
+        with operation_guard(stop):
+            return function(item)
+
+    with ThreadPoolExecutor(max(1, min(workers, len(items)))) as pool:
+        futures = [pool.submit(call, item) for item in items]
+        try:
+            pending = set(futures)
+            while pending:
+                check_operation()
+                pending = wait(pending, timeout=.25).not_done
+        finally:
+            cancelled.set()
+    return [f.result() for f in futures]
 
 
 def communicate_checked(process, timeout):

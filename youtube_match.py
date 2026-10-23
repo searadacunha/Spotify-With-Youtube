@@ -8,7 +8,7 @@ import time
 import unicodedata
 from dataclasses import asdict, dataclass
 
-from common import run
+from common import parallel, run
 from audio_match import AudioComparator
 
 LOG = logging.getLogger(__name__)
@@ -218,14 +218,16 @@ def search(track, cfg, deadline=None):
     if identity(track.title)[1]:
         queries.append(f"{track.artists[0]} {song_title(track.title)} official music video")
     candidates = {}
-    for query in dict.fromkeys(queries):
-        timeout = min(cfg["search_timeout_seconds"], deadline - time.monotonic())
-        if timeout <= 0:
-            raise RuntimeError("Search deadline exhausted; nothing sent")
-        output = run([sys.executable, "-m", "yt_dlp", "--ignore-config", "--no-update",
-                      "--flat-playlist", "--dump-single-json", "--skip-download",
-                      "--socket-timeout", "10", "--retries", "1", "--extractor-retries", "1",
-                      f"ytsearch{cfg['search_results']}:{query}"], timeout)
+    timeout = min(cfg["search_timeout_seconds"], deadline - time.monotonic())
+    if timeout <= 0:
+        raise RuntimeError("Search deadline exhausted; nothing sent")
+    outputs = parallel(lambda query: run([sys.executable, "-m", "yt_dlp", "--ignore-config", "--no-update",
+                                          "--flat-playlist", "--dump-single-json", "--skip-download",
+                                          "--socket-timeout", "10", "--retries", "1", "--extractor-retries", "1",
+                                          f"ytsearch{cfg['search_results']}:{query}"], timeout),
+                       list(dict.fromkeys(queries)))
+    # Merged in query order, as when the queries ran one after another.
+    for output in outputs:
         data = json.loads(output)
         if not isinstance(data.get("entries"), list):
             raise RuntimeError("YouTube: invalid search; deferred retry")
@@ -309,7 +311,9 @@ def resolve(track, cfg, candidates=None, comparator=None):
             raise RuntimeError("More than 16 plausible candidates: ambiguous resolution, nothing sent")
         for c in pending:
             LOG.info("DETAILS %s | %s", c["id"], c.get("title"))
-            c.update(video_details(c, min(cfg["search_timeout_seconds"], remaining())))
+        timeout = min(cfg["search_timeout_seconds"], remaining())
+        for c, details in zip(pending, parallel(lambda c: video_details(c, timeout), pending)):
+            c.update(details)
         pool = [m for m in rank(track, candidates, analysis_cfg) if m.eligible]
         if not pool:
             return None, report()
@@ -333,12 +337,13 @@ def resolve(track, cfg, candidates=None, comparator=None):
         if reference.tier == 3 and len({m.candidate.get('channel_id') for m in references}) < 2:
             raise RuntimeError("Isolated unofficial source: audio not corroborated; nothing sent")
         def compare_all(audio):
-            for m in pool:
-                if m.candidate["id"] == reference.candidate["id"]:
-                    continue
-                # Lower-priority unofficial uploads cannot displace an established official recording.
-                if m.tier > reference.tier and reference.tier < 3 and not (reference.album_conflict and m in corroborators):
-                    continue
+            # Lower-priority unofficial uploads cannot displace an established official recording.
+            targets = [m for m in pool if m.candidate["id"] != reference.candidate["id"]
+                       and not (m.tier > reference.tier and reference.tier < 3
+                                and not (reference.album_conflict and m in corroborators))]
+            if targets:
+                audio.preload([reference.candidate, *(m.candidate for m in targets)], remaining())
+            for m in targets:
                 LOG.info("AUDIO COMPARE %s ↔ %s", m.candidate["id"], reference.candidate["id"])
                 result = audio.compare(reference.candidate, m.candidate, track.duration, remaining())
                 m.candidate["audio_check"] = {**result, "policy": SCORING_VERSION,
