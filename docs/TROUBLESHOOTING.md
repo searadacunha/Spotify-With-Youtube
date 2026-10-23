@@ -39,8 +39,12 @@ sleeping panel. The bridge never wakes the TV; wake it yourself, then pick the t
 in Spotify TV while the service is running.
 
 **The video starts but Spotify on the TV stops** — Expected: Android gives the
-audio focus to SmartTube. Pick the next track in Spotify TV: Spotify in front arms
-the bridge again.
+audio focus to SmartTube and the clip replaces the song. When it ends, the bridge
+moves Spotify to its next track.
+
+**SmartTube goes on with its own next video** — The bridge was disarmed before the
+clip ended (`MANUAL_OVERRIDE_ENTER` in the log: clip paused, another video, another
+app). Pick the next track in Spotify TV: Spotify in front arms the bridge again.
 
 **Intent accepted but the video is not available** — The intent only proves
 delivery. Removed, private or geo-blocked videos still "succeed". The cache will

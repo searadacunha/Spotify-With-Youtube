@@ -100,8 +100,11 @@ Three independent mechanisms:
    owned `video_id`, reason. Missing state and startup mean manual override.
    Spotify TV in the focused window claims control (new generation, no owned video
    until the next send). `resume` explicitly adopts a video already playing in foreground SmartTube.
-   Otherwise every guard requires this same owned video in playback state 3 and
-   SmartTube in the focused window. Unknown state fails closed. Changing generation cancels
+   Otherwise every guard requires this same owned video in playback state 3 (or 6,
+   buffering) and SmartTube in the focused window, except in the 20 s after a send
+   while SmartTube loads it. When the owned clip ends, `MediaProbe next` moves
+   Spotify TV to its next track and `monkey` brings Spotify in front, which keeps
+   control. Unknown state fails closed. Changing generation cancels
    older pending work; conditional state writes preserve concurrent explicit resumes.
 
 `last_done` remains diagnostic and suppresses negative matches for 24 hours under
@@ -127,7 +130,8 @@ for the non-atomic ADB timing boundary.
 TV. It lists active `MediaController`s for `com.spotify.tv.android` and
 `org.smarttube.stable` (both package names are compiled into the probe) and prints
 JSON: package, playback state, position, media id, title, artist, album, duration,
-advertisement flag. `from_tv()` accepts exactly one Spotify session in state
+advertisement flag. With the argument `next` it first skips a paused Spotify TV
+session to its next track and plays it. `from_tv()` accepts exactly one Spotify session in state
 `3` (playing) whose media id is `spotify:track:<id>`; ads and podcasts return
 "nothing playing"; a missing duration is an error (never estimated); and the
 Spotify TV **video mode**, which repeats the title in the artist and album fields,

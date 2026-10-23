@@ -55,12 +55,12 @@ Honest list of what the bridge does not do, as of rules version 7.
 
 ## Playback
 
-- SmartTube takes the audio focus: Spotify TV **was paused** in the observed
-  sessions. Playlists do not reliably advance by themselves: pick the next track in
-  Spotify TV, which arms the bridge while Spotify is in front. On the TV
-  (2026-10-22) one song went through this path; a second one was not observed (the
-  TV went offline). Controlling the TV's Spotify from a phone (Spotify Connect)
-  while SmartTube stays in the foreground has not been verified either.
+- SmartTube takes the audio focus and Spotify TV pauses. At the end of each clip the
+  bridge moves Spotify to its next track ([SMARTTUBE.md](SMARTTUBE.md)). Pausing the
+  clip, or starting another video in SmartTube before its last 30 seconds, disarms
+  the bridge: SmartTube's autoplay then goes on until you pick a track in Spotify TV.
+  Controlling the TV's Spotify from a phone (Spotify Connect) while SmartTube stays
+  in the foreground has not been verified.
 - No synchronisation of pause, seek position or volume; every video starts from
   the beginning when the track changes.
 - Delivery of the intent does not guarantee playback (removed, private or
@@ -83,8 +83,10 @@ Honest list of what the bridge does not do, as of rules version 7.
   in the last interval cannot be ruled out, nor a leave/return between observations.
   A strict instantaneous guarantee needs TV-side event handling and atomic cooperation
   from the player.
-- The guard conservatively disarms for unknown, buffering, paused or stopped playback.
-  Going back to Spotify TV (or an explicit resume) re-arms it.
+- The guard conservatively disarms for unknown, paused or stopped playback, but not
+  in the 20 s after a send, while SmartTube loads the clip (it reported it playing
+  only after 4 to 6 s on the TV). Buffering keeps it armed. Going back to Spotify TV
+  (or an explicit resume) re-arms it.
 - The same track is never sent twice in a row to a destination, even after a restart
   or a rules change; A → B → A sends A again. Playing one track on repeat therefore
   shows its clip once.
