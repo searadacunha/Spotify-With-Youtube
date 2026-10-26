@@ -40,7 +40,7 @@ The rest of the user-priority guard (other apps, pauses, a video you pick yourse
 
 ---
 
-# Why I Built It
+## Why I Built It
 
 Spotify already knows exactly what I am listening to.
 
@@ -89,7 +89,7 @@ The edition check decides what counts as the real clip; view count only picks th
 
 ---
 
-# What Spotify With YouTube Does
+## What Spotify With YouTube Does
 
 The pipeline is:
 
@@ -127,7 +127,7 @@ Spotify Desktop on macOS and the Spotify Web API also exist as optional sources.
 
 ---
 
-# The Important Part — Matching the Right Version
+## The Important Part — Matching the Right Version
 
 This repository is not just an ADB launcher.
 
@@ -157,7 +157,7 @@ The goal is simple from the user's side: the song you choose on Spotify becomes 
 
 ---
 
-# Real Example — Summer Jam
+## Real Example — Summer Jam
 
 The Spotify track was:
 
@@ -191,7 +191,7 @@ This is exactly the kind of mistake a normal title-only automation would make.
 
 ---
 
-# Real Example — Juice WRLD, Robbery
+## Real Example — Juice WRLD, Robbery
 
 The official music video is shorter than the Spotify track.
 
@@ -215,7 +215,7 @@ That is the difference between checking metadata and checking identity.
 
 ---
 
-# Audio Verification
+## Audio Verification
 
 When metadata cannot settle the decision, the bridge can compare YouTube publications directly.
 
@@ -240,7 +240,7 @@ Temporary audio files are deleted after decoding.
 
 ---
 
-# User Priority Comes First
+## User Priority Comes First
 
 This project originally proved that the automation could send the correct video to SmartTube.
 
@@ -285,7 +285,7 @@ A track Spotify is already playing is never skipped.
 
 ---
 
-# Protection Against Old or Duplicate Sends
+## Protection Against Old or Duplicate Sends
 
 Music matching can take time.
 
@@ -311,7 +311,7 @@ A → B → A sends A again: playing a song later brings its clip back.
 
 ---
 
-# Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -351,9 +351,9 @@ Full architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
 
-# Quick Start
+## Quick Start
 
-## 1. Requirements
+### 1. Requirements
 
 You need:
 
@@ -372,7 +372,7 @@ Install the host tools:
 brew install android-platform-tools ffmpeg node
 ```
 
-## 2. Clone
+### 2. Clone
 
 ```sh
 git clone https://github.com/searadacunha/Spotify-With-Youtube.git
@@ -382,7 +382,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-## 3. Configure the TV
+### 3. Configure the TV
 
 ```sh
 cp config.example.json config.json
@@ -406,7 +406,7 @@ Android 11+ may require wireless-debugging pairing first.
 
 See [docs/ADB.md](docs/ADB.md).
 
-## 4. Check everything
+### 4. Check everything
 
 ```sh
 ./smarttube check
@@ -414,7 +414,7 @@ See [docs/ADB.md](docs/ADB.md).
 
 This checks the local dependencies, configuration, ADB target, SmartTube package and current Spotify track.
 
-## 5. Test without sending anything
+### 5. Test without sending anything
 
 ```sh
 ./smarttube test
@@ -422,7 +422,7 @@ This checks the local dependencies, configuration, ADB target, SmartTube package
 
 The entire matching path runs, but no video is launched.
 
-## 6. Start the service
+### 6. Start the service
 
 ```sh
 ./smarttube start
@@ -450,7 +450,7 @@ Full installation guide: [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
 ---
 
-# Match Any Track Without a TV
+## Match Any Track Without a TV
 
 The matching engine can also be used directly:
 
@@ -467,11 +467,11 @@ It returns the candidate ranking and the selected result: `match` (proven offici
 
 ---
 
-# What Is Verified
+## What Is Verified
 
 The repository separates hardware observations from code that only exists in tests.
 
-## VERIFIED on real hardware
+### VERIFIED on real hardware
 
 - Spotify track detection from the TV over ADB
 - version-aware YouTube matching
@@ -485,7 +485,7 @@ The repository separates hardware observations from code that only exists in tes
 - macOS background service
 - dry-run mode
 
-## IMPLEMENTED and unit-tested
+### IMPLEMENTED and unit-tested
 
 - persistent user-priority / manual-override guard
 - no same-track resend in a row, across restarts
@@ -503,7 +503,7 @@ That distinction is deliberate.
 
 ---
 
-# Tests
+## Tests
 
 Run:
 
@@ -541,7 +541,7 @@ See [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
-# Logs Tell You Why
+## Logs Tell You Why
 
 A normal decision is explainable.
 
@@ -579,7 +579,7 @@ It is automation that can explain why it acted — or why it refused to act.
 
 ---
 
-# Why SmartTube?
+## Why SmartTube?
 
 SmartTube is the recommended target because it works well as an Android TV playback destination and exposes enough playback state for the current control guard.
 
@@ -591,7 +591,7 @@ See [docs/SMARTTUBE.md](docs/SMARTTUBE.md).
 
 ---
 
-# Limitations
+## Limitations
 
 This is not magic.
 
@@ -611,7 +611,7 @@ See [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ---
 
-# Security
+## Security
 
 The repository contains no music or video files.
 
@@ -634,7 +634,7 @@ See [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
-# Roadmap
+## Roadmap
 
 Possible next steps:
 
@@ -649,7 +649,7 @@ Possible next steps:
 
 ---
 
-# The Principle Behind the Project
+## The Principle Behind the Project
 
 The code is not built around:
 
@@ -663,7 +663,7 @@ That is the entire idea behind **Spotify With YouTube**.
 
 ---
 
-# Documentation
+## Documentation
 
 - [Installation](docs/INSTALLATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -677,7 +677,7 @@ That is the entire idea behind **Spotify With YouTube**.
 
 ---
 
-# Contributing
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -687,7 +687,7 @@ Per-track or per-channel hard-coded exceptions should not be used to make exampl
 
 ---
 
-# License
+## License
 
 MIT — see [LICENSE](LICENSE).
 
