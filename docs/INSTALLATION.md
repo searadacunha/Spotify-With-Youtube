@@ -21,8 +21,8 @@ Tools installed elsewhere must be given as absolute paths in `config.json`
 ## 2. Project
 
 ```sh
-git clone https://github.com/searadacunha/spotify-smarttube-bridge.git
-cd spotify-smarttube-bridge
+git clone https://github.com/searadacunha/Spotify-With-Youtube.git
+cd Spotify-With-Youtube
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip check
