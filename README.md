@@ -1,24 +1,18 @@
 # Spotify With YouTube
 
-## Turn Spotify into a music-video experience on your TV.
+**Choose the track in Spotify. Watch the video in SmartTube.**
 
-Play a song on **Spotify**.
+This local Python bridge follows Spotify playback on Android TV / Google TV, identifies suitable YouTube videos and opens them in SmartTube. When a clip launched by the bridge finishes, Spotify can advance to the next song and the next video follows.
 
-**Spotify to SmartTube automatically connects it to the corresponding video on SmartTube and opens it on your Android TV.**
+It goes beyond title search: the matcher checks artists, editions (radio edit, remix, live), official sources and, when needed, audio similarity. If no official video of the correct edition can be verified, it selects a popularity-based fallback **without calling it an exact match**.
 
-Change the song on Spotify, and the video follows.
+The Mac hosts the service; ADB handles TV playback. A user-priority guard prevents automated sends when the TV is no longer in a session controlled by Spotify or the bridge.
 
-When the clip ends, Spotify moves to the next song, and its video follows too.
+[![Tests](https://github.com/searadacunha/Spotify-With-Youtube/actions/workflows/tests.yml/badge.svg)](https://github.com/searadacunha/Spotify-With-Youtube/actions/workflows/tests.yml)
 
-No manual search. No switching apps to look for the clip. No remote-control typing.
+[Quick start](#quick-start) · [Matching logic](#the-important-part--matching-the-right-version) · [Real-device validation](#what-is-verified) · [Limitations](#limitations)
 
-Spotify remains the way you choose the music.
-
-SmartTube becomes the screen.
-
-**One Spotify track in. One video on the TV. Automatically.**
-
-That is **Spotify With YouTube**.
+**Verification status:** matching, delivery and five consecutive end-of-clip handoffs were observed on a real Android TV (2026-10-23). Several manual-override scenarios are unit-tested but still need end-to-end hardware checks.
 
 ---
 
@@ -381,8 +375,8 @@ brew install android-platform-tools ffmpeg node
 ## 2. Clone
 
 ```sh
-git clone https://github.com/searadacunha/spotify-smarttube-bridge.git
-cd spotify-smarttube-bridge
+git clone https://github.com/searadacunha/Spotify-With-Youtube.git
+cd Spotify-With-Youtube
 
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
