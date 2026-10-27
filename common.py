@@ -95,9 +95,11 @@ class Track:
     album: str = ""
 
     def __post_init__(self):
-        if (not re.fullmatch(r"[A-Za-z0-9]{22}", self.id)
-                or not self.title.strip() or not self.artists
-                or not all(a.strip() for a in self.artists)
+        if (not isinstance(self.id, str) or not re.fullmatch(r"[A-Za-z0-9]{22}", self.id)
+                or not isinstance(self.title, str) or not self.title.strip()
+                or not isinstance(self.artists, (tuple, list)) or not self.artists
+                or not all(isinstance(a, str) and a.strip() for a in self.artists)
+                or type(self.duration) not in (int, float)
                 or not math.isfinite(self.duration) or self.duration <= 0):
             raise ValueError("Incomplete Spotify metadata or non-music item")
 
