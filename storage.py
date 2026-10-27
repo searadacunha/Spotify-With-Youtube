@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 import sqlite3
 import time
 from dataclasses import asdict
@@ -16,9 +17,17 @@ class Store:
         self.db.execute("CREATE TABLE IF NOT EXISTS handled_tracks (track_id TEXT, target TEXT, package TEXT, outcome TEXT, video_id TEXT, time REAL, PRIMARY KEY (track_id, target, package))")
         self.db.commit()
         previous = self.get_state("last_done")
-        if previous and previous.get("outcome") == "sent":
-            self.record_handled(previous["track_id"], previous["destination"],
-                                previous.get("video_id"), "sent", previous["time"])
+        # Older installs may contain incomplete state snapshots. Migrate only
+        # complete confirmed sends; a malformed record must not crash startup.
+        destination = previous.get("destination") if isinstance(previous, dict) else None
+        when = previous.get("time") if isinstance(previous, dict) else None
+        if (isinstance(previous, dict) and previous.get("outcome") == "sent"
+                and isinstance(previous.get("track_id"), str)
+                and isinstance(destination, (list, tuple)) and len(destination) == 2
+                and all(isinstance(part, str) and part for part in destination)
+                and type(when) in (int, float) and math.isfinite(when)):
+            self.record_handled(previous["track_id"], destination,
+                                previous.get("video_id"), "sent", when)
 
     @staticmethod
     def fingerprint(track, cfg):
