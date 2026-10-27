@@ -71,7 +71,7 @@ class SmartTube:
             raise ValueError("SmartTube video identity unavailable")
         return sessions[0]
 
-    def clip_over(self, video_id, session):
+    def clip_over(self, video_id, session, *, wait=True):
         """The clip we sent is ending, or autoplay just replaced it at its end."""
         if video_id == self.handed_off:
             return False
@@ -82,9 +82,14 @@ class SmartTube:
             return False
         remaining = (duration - position) / 1000
         self.clip_end = time.monotonic() + remaining
-        if remaining > self.cfg["poll_seconds"] + 5:
+        # The first inspection schedules a wait. The inspection after that wait
+        # must observe active playback in its final second: time passing alone
+        # does not prove progress after buffering, a frozen position or a seek.
+        threshold = self.cfg["poll_seconds"] + 5 if wait else 1
+        if session.get("state") != 3 or remaining > threshold:
             return False
-        time.sleep(max(0, remaining - 1))  # hand over just before SmartTube's autoplay starts
+        if wait:
+            time.sleep(max(0, remaining - 1))  # hand over just before SmartTube's autoplay starts
         return True
 
     def next_on_spotify(self, video_id):
@@ -149,8 +154,20 @@ class SmartTube:
                 self.enter_override("Foreground app is " + str(app))
             session = self.playback()
             if self.clip_over(state["video_id"], session):
-                self.next_on_spotify(state["video_id"])
-                return self.check_control(generation)  # Spotify in front keeps the bridge armed
+                # The end-of-clip wait can outlive a pause, seek, app switch or
+                # explicit resume. Revalidate before any Spotify transport command.
+                if self.store.get_state("tv_control") != state:
+                    raise ManualOverride("Control session changed before clip handoff")
+                if self.foreground_app() != self.cfg["smarttube_package"]:
+                    self.enter_override("Foreground changed before clip handoff")
+                session = self.playback()
+                if self.foreground_app() != self.cfg["smarttube_package"]:
+                    self.enter_override("Foreground changed during clip handoff inspection")
+                if self.store.get_state("tv_control") != state:
+                    raise ManualOverride("Control session changed during clip handoff inspection")
+                if self.clip_over(state["video_id"], session, wait=False):
+                    self.next_on_spotify(state["video_id"])
+                    return self.check_control(generation)  # Spotify in front keeps the bridge armed
             if session["id"] != state["video_id"]:
                 self.enter_override("SmartTube video manually replaced")
             # Re-read focus after the media probe, immediately before authorizing a send.

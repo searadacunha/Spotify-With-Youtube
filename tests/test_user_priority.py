@@ -152,12 +152,83 @@ class UserPriorityTests(unittest.TestCase):
         following = Track("1" * 22, "Hate Me", ("Ellie Goulding, Juice WRLD",), 205.5, "Hate Me")
         self.store.remember(following, self.cfg, {"id": "C" * 11, "title": "Hate Me"})
         self.source.current.return_value = following
-        with patch("smarttube_adb.time.sleep") as sleep:
+        with patch("smarttube_adb.time.sleep", side_effect=lambda seconds:
+                   self.clip.update(position_ms=self.clip["position_ms"] + int(seconds * 1000))) as sleep:
             self.assertEqual(self.bridge.step(), "sent")
         sleep.assert_called_once_with(3)
         self.assertEqual(len(self.skips()), 1)
         self.assertEqual(self.video, "C" * 11)
         self.assertFalse(self.store.get_state("tv_control")["manual_override"])
+
+    def test_app_switch_during_clip_end_wait_cancels_handoff(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        with patch("smarttube_adb.time.sleep", side_effect=lambda _: setattr(self, "app", "com.netflix.ninja")):
+            self.assertEqual(self.bridge.step(), "manual_override")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+        self.assertEqual(self.app, "com.netflix.ninja")
+
+    def test_pause_during_clip_end_wait_cancels_handoff(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        with patch("smarttube_adb.time.sleep", side_effect=lambda _: setattr(self, "state", 2)):
+            self.assertEqual(self.bridge.step(), "manual_override")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+
+    def test_seek_back_during_clip_end_wait_keeps_current_video(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        self.source.current.return_value = None
+        with patch("smarttube_adb.time.sleep", side_effect=lambda _: self.clip.update(position_ms=10000)):
+            self.assertEqual(self.bridge.step(), "idle")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+        self.assertFalse(self.store.get_state("tv_control")["manual_override"])
+
+    def test_small_seek_back_during_clip_end_wait_does_not_skip_remaining_audio(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        self.source.current.return_value = None
+        with patch("smarttube_adb.time.sleep", side_effect=lambda _: self.clip.update(position_ms=193000)):
+            self.assertEqual(self.bridge.step(), "idle")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+
+    def test_frozen_position_during_clip_end_wait_does_not_advance_spotify(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        self.source.current.return_value = None
+        with patch("smarttube_adb.time.sleep"):
+            self.assertEqual(self.bridge.step(), "idle")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+
+    def test_buffering_during_clip_end_wait_does_not_advance_spotify(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        self.source.current.return_value = None
+
+        def buffering(_):
+            self.state = 6
+            self.clip["position_ms"] = 199500
+
+        with patch("smarttube_adb.time.sleep", side_effect=buffering):
+            self.assertEqual(self.bridge.step(), "idle")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+
+    def test_new_control_session_during_clip_end_wait_cancels_old_handoff(self):
+        self.activate()
+        self.clip = {"duration_ms": 200000, "position_ms": 196000}
+        previous = self.store.get_state("tv_control")
+        current = {**previous, "generation": "new-explicit-session"}
+        with patch("smarttube_adb.time.sleep", side_effect=lambda _: self.store.replace_control(previous, current)):
+            self.assertEqual(self.bridge.step(), "manual_override")
+        self.assertEqual(self.skips(), [])
+        self.assertEqual(self.sends(), [])
+        self.assertEqual(self.store.get_state("tv_control"), current)
 
     def test_autoplay_replacing_the_clip_hands_back_only_near_its_end(self):
         for remaining, expected in [(20000, "idle"), (120000, "manual_override")]:
