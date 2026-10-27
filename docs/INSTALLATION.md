@@ -7,8 +7,8 @@ each one can be verified before the next.
 ## 1. Host tools
 
 ```sh
-brew install android-platform-tools ffmpeg node
-python3 --version        # 3.12 or newer is required (numpy pin); brew install python@3.13 otherwise
+brew install python@3.12 android-platform-tools ffmpeg node
+python3.12 --version
 adb --version
 ffmpeg -version | head -1
 node --version
@@ -23,7 +23,7 @@ Tools installed elsewhere must be given as absolute paths in `config.json`
 ```sh
 git clone https://github.com/searadacunha/Spotify-With-Youtube.git
 cd Spotify-With-Youtube
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip check
 .venv/bin/python -m unittest discover -s tests
@@ -52,8 +52,8 @@ cp config.example.json config.json
 ```
 
 Edit `config.json`: set `tv_target` to the exact `host:port` shown by `adb devices`.
-Leave the rest unless you know why. Every key is documented in the README. The
-file is git-ignored.
+Leave the rest initially. The complete defaults are in `config.example.json`;
+matching settings are explained in [MATCHING.md](MATCHING.md). The file is git-ignored.
 
 Optional, only for the Spotify Web API source: `cp .env.example .env`, set
 `SPOTIFY_CLIENT_ID`, run `./smarttube login`.

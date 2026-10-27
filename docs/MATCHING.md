@@ -1,7 +1,8 @@
 # Matching pipeline
 
-How `youtube_match.py` turns a Spotify track into one YouTube video id: a proven
-official clip, or else the most-viewed result (section 14). Everything below is read from the code (rules version `SCORING_VERSION = 7`);
+How `youtube_match.py` selects a YouTube video id from a Spotify track: an official
+clip accepted by the current rules, or a most-viewed fallback when candidates exist
+(section 14). Everything below is read from the code (rules version `SCORING_VERSION = 7`);
 numbers in parentheses are the defaults from `config.example.json`.
 
 Guiding rule: **recording identity precedes source priority, and popularity is never
@@ -235,11 +236,13 @@ corroborated by a second publication from another channel.
 **Limits.** The reference is a YouTube publication, not Spotify's stream: the TV
 exposes metadata, not audio. Three windows do not certify every second. The 0.82 /
 0.45 thresholds were chosen conservatively on a handful of verified cases and have
-not been validated on a large corpus. A download blocked by YouTube, a timeout or a
-decode error aborts the resolution and the bridge retries later; it never falls
-back to "metadata only".
+not been validated on a large corpus. A blocked download, timeout or decode error
+aborts the exact-match resolution. The bridge can still use already-found
+candidates for the popularity fallback; it does not label that fallback as a
+verified recording. A search failure before candidates exist is retried later.
 
-Measured values on real tracks are in the README's verified examples.
+Historical measured values are retained in
+[Testing](TESTING.md#recorded-hardware-observations).
 
 ## 12. Abstention
 
@@ -252,14 +255,14 @@ undecidable higher-priority video; audio download or decode failure; and
 
 It returns `None` when no candidate is even eligible after the detail checks.
 In both cases, and when the accepted match is not a tier-1 official clip, the bridge
-sends the most-viewed result instead (section 14).
+uses the most-viewed result when a playable candidate exists (section 14).
 
 ## 13. Cache
 
 `storage.py` keeps `track_id → candidate` in SQLite with a fingerprint of
 `SCORING_VERSION`, the track's fields and the matching options (`min_score`,
 `prefer_official`, `allow_audio_fallback`, duration limits, `search_results`).
-Proven clips expire after 90 days; most-viewed fallbacks and negative entries after
+Accepted official clips expire after 90 days; most-viewed fallbacks and negative entries after
 24 hours, so a clip missed through a transient error is searched again the next day.
 Before use, a cached candidate is re-scored with the current configuration and
 dropped unless it is still an accepted tier-1 clip or was a fallback. The audio verdict stored with the candidate is only trusted
@@ -270,7 +273,7 @@ discarded).
 
 ## 14. Most-viewed fallback
 
-Every song gets a video. When `resolve()` does not return an accepted tier-1 official
+When `resolve()` does not return an accepted tier-1 official
 clip (no clip, official audio or lyric video only, abstention, audio download
 failure), `most_viewed()` picks among the candidates already found, live and upcoming
 streams excluded:
@@ -284,6 +287,8 @@ The highest `view_count` of the first non-empty group wins (log `NO VERIFIED CLI
 most viewed video instead`). Popularity only picks; it proves nothing about the
 edition, so the fallback is cached 24 h. `NO RELIABLE MATCH` remains only when the
 search returned no playable result. `./smarttube match` reports `verdict: most_viewed`.
+The fallback cannot guarantee a video for every track: an empty search, network
+failure or unavailable upload can prevent selection or playback.
 
 ## Worked examples
 

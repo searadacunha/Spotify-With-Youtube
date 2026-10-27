@@ -311,8 +311,10 @@ def resolve(track, cfg, candidates=None, comparator=None):
             raise RuntimeError("More than 16 plausible candidates: ambiguous resolution, nothing sent")
         for c in pending:
             LOG.info("DETAILS %s | %s", c["id"], c.get("title"))
-        timeout = min(cfg["search_timeout_seconds"], remaining())
-        for c, details in zip(pending, parallel(lambda c: video_details(c, timeout), pending)):
+        # Queued requests start later than the first worker batch. Give each one
+        # only the time still available, not a fresh copy of the original budget.
+        for c, details in zip(pending, parallel(
+                lambda c: video_details(c, min(cfg["search_timeout_seconds"], remaining())), pending)):
             c.update(details)
         pool = [m for m in rank(track, candidates, analysis_cfg) if m.eligible]
         if not pool:

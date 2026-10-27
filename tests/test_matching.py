@@ -123,6 +123,24 @@ class VersionMatchingTests(unittest.TestCase):
                 search(self.track, self.cfg, deadline=49)
             run.assert_not_called()
 
+    def test_queued_details_share_the_overall_resolution_deadline(self):
+        self.cfg["matching_timeout_seconds"] = 30
+        clock, timeouts = [0], []
+        candidates = [{**self.audio, "id": letter * 11, "details_checked": False}
+                      for letter in "ABC"]
+
+        def details(candidate, timeout):
+            timeouts.append(timeout)
+            clock[0] += 9
+            return {**candidate, "details_checked": True}
+
+        # Serial scheduling deterministically models requests queued behind busy workers.
+        with patch("youtube_match.time.monotonic", side_effect=lambda: clock[0]), \
+             patch("youtube_match.parallel", side_effect=lambda fn, items: [fn(item) for item in items]), \
+             patch("youtube_match.video_details", side_effect=details):
+            self.assertIsNotNone(self.choose(candidates))
+        self.assertEqual(timeouts, [30, 21, 12])
+
     def test_one_empty_query_does_not_cancel_search(self):
         hit = json.dumps({"entries": [{"id": "B" * 11, "title": "Summer Jam"}]})
         with patch("youtube_match.run", side_effect=[hit, '{"entries": []}', hit, hit]):
