@@ -14,6 +14,8 @@ The Mac hosts the service; ADB handles TV playback. A user-priority guard preven
 
 **Verification status:** matching, delivery and five consecutive end-of-clip handoffs were observed on a real Android TV (2026-10-23). Several manual-override scenarios are unit-tested but still need end-to-end hardware checks.
 
+**At a glance:** macOS host + Spotify playback source + Android TV / Google TV + SmartTube over ADB. The CI suite checks matching and control rules without a connected television; it also rebuilds the Android probe. Real-device behavior and automated test coverage are documented separately below.
+
 ---
 
 ## The result
@@ -513,7 +515,7 @@ Run:
 
 Current suite:
 
-**107 unit tests**
+**Automated unit tests**
 
 covering:
 
