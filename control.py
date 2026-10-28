@@ -49,7 +49,7 @@ def match(argv, cfg=None):
         report["error"] = str(exc)
     verdict = "match" if selected and selected.tier == 1 else "most_viewed"
     if verdict == "most_viewed":
-        selected = most_viewed(track, ranking) or selected
+        selected = most_viewed(track, ranking, cfg or load_config()) or selected
     video_id = selected.candidate["id"] if selected else None
     report.update(verdict=verdict if selected else "no_match", video_id=video_id,
                   url="https://www.youtube.com/watch?v=" + video_id if video_id else None, ranking=ranking)
