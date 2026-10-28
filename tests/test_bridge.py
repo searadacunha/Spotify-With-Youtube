@@ -95,6 +95,35 @@ class StorageAndLoopTests(Fixtures):
         self.assertEqual(self.bridge().step(), "stale")
         self.tv.send.assert_not_called()
 
+    def test_switch_during_active_resolution_cancels_before_dispatch(self):
+        self.store.db.execute("DELETE FROM matches")
+        other = Track("1" * 22, "Another", ("Artist",), 200)
+        self.store.remember(other, self.cfg, self.video)
+        self.source.current.side_effect = [self.track, other]
+        bridge = self.bridge()
+
+        def search_with_pending_check(*args):
+            bridge.check_pending()  # Called periodically by the real guarded search.
+            raise AssertionError("stale resolution should have been cancelled")
+
+        with patch("main.resolve", side_effect=search_with_pending_check):
+            self.assertEqual(bridge.step(), "stale")
+        self.tv.send.assert_not_called()
+        self.assertEqual(bridge.retry_at, 0)
+        self.source.current.side_effect = None
+        self.source.current.return_value = other
+        self.assertEqual(bridge.step(), "sent")
+        self.tv.send.assert_called_once()
+
+    def test_pause_during_active_resolution_cancels_without_retry(self):
+        self.store.db.execute("DELETE FROM matches")
+        self.source.current.side_effect = [self.track, None]
+        bridge = self.bridge()
+        with patch("main.resolve", side_effect=lambda *_: bridge.check_pending()):
+            self.assertEqual(bridge.step(), "stale")
+        self.tv.send.assert_not_called()
+        self.assertEqual(bridge.failures, 0)
+
     def test_tv_failure_blocks_without_retry(self):
         self.tv.check_control.side_effect = ManualOverride("offline")
         bridge = self.bridge()

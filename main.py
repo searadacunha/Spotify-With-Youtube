@@ -18,6 +18,10 @@ from youtube_match import AmbiguousMatch, most_viewed, resolve, score
 LOG = logging.getLogger(__name__)
 
 
+class TrackChanged(Exception):
+    """An active Spotify selection changed while a search was in progress."""
+
+
 class Bridge:
     def __init__(self, cfg, source, tv, store, dry_run=False):
         self.cfg, self.source, self.tv, self.store = cfg, source, tv, store
@@ -34,6 +38,10 @@ class Bridge:
             if not self.dry_run:
                 self.generation = self.tv.check_control()["generation"]
             return self._step()
+        except TrackChanged:
+            self.cancel_pending()
+            LOG.info("STALE: Spotify changed or paused during resolution; pending work cancelled")
+            return "stale"
         except ManualOverride:
             self.cancel_pending()
             return "manual_override"
@@ -44,7 +52,12 @@ class Bridge:
 
     def check_pending(self):
         if time.monotonic() >= self.next_control_check:
+            # A foreground check alone cannot cancel an expensive search when
+            # the user switches tracks without changing the active TV app.
             self.tv.check_control(self.generation)
+            current = self.source.current()
+            if current is None or current.id != self.last_observed:
+                raise TrackChanged()
             self.next_control_check = time.monotonic() + self.cfg["poll_seconds"]
 
     def wait(self, delay):
@@ -190,6 +203,8 @@ def main():
             try:
                 status = bridge.step()
                 source_failures = 0
+                if status == "stale":
+                    wait = 0  # read the new Spotify selection on the next loop
             except Exception as exc:
                 source_failures += 1
                 wait = max(getattr(exc, "retry_after", 0), min(300, 15 * 2 ** min(source_failures - 1, 5)))

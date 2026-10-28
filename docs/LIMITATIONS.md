@@ -76,10 +76,12 @@ Honest list of what the bridge does not do, as of rules version 7.
 
 ## Timing and state
 
-- Resolution is synchronous. A track change during a long resolution is only noticed
-  when it finishes (then the result is discarded, see README "Stale searches"). The
-  first resolution of a track can take tens of seconds; cached tracks are near
-  instant.
+- Resolution remains synchronous, but guarded searches now recheck the current
+  Spotify track at the polling interval (default 3 s plus source/ADB latency),
+  cancelling child processes when the track changes or pauses. The next loop
+  polls the new selection without the usual post-step delay. Cached tracks are
+  typically quicker; uncached matching still takes time. This is not playlist
+  preloading or sample-accurate synchronization.
 - Attempts are persisted before dispatch. A crash or uncertain reply can therefore
   suppress a track that was not actually delivered; it cannot authorize a resend.
 - Foreground/playback checks are polling snapshots (default 3 s, plus ADB latency),
