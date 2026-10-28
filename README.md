@@ -20,15 +20,17 @@ controlled clip ends.
   duration and source metadata before accepting a clip.
 - **Audio comparison when needed:** compares three windows against a YouTube
   reference publication. It does not capture Spotify's audio stream.
-- **Visible fallback:** when no official clip meets the rules, selects a popular
-  search result and labels it `most_viewed`, rather than claiming an exact match.
+- **Conservative fallback:** when no verified clip is available, considers
+  a popular result only if artist, song and explicit edition agree. Otherwise
+  it does not send a video. `most_viewed` is never proof of audio identity.
 - **Playback safeguards:** rechecks the Spotify track before sending, suppresses
   consecutive duplicate sends and pauses automation when TV control is lost.
 - **Local operation:** SQLite cache, rotating logs, dry-run mode and a macOS
   LaunchAgent. The default TV source needs no Spotify token or YouTube API key.
 
-**A fallback may be a different edition, a fan upload or even an unrelated search
-result.** Empty searches and network failures can leave a track without a video.
+**A fallback can still be an unverified recording, including a fan upload.**
+Unknown or contradictory metadata, empty searches and network failures can leave
+a track without a video; unrelated titles are no longer used as fallbacks.
 The matching rules and audio scores are evidence, not a guarantee of identity.
 
 ## Quick start
@@ -140,10 +142,11 @@ in seconds. Network or configuration errors also return a nonzero exit code.
 5. Recheck that Spotify still names the same track and that TV control is valid.
 6. Open the video in SmartTube and persist the attempt to prevent duplicate sends.
 
-The fallback selects the highest reported view count in the first nonempty group:
-**song + artist**, then **song title**, then **any playable search result**.
-This is a bounded search, not a search of every YouTube upload. Audio ambiguity
-prevents an exact-match verdict but does **not** disable the fallback.
+The fallback selects the highest reported view count **only among candidates
+consistent with song, first artist and any explicitly requested edition**.
+Known mismatches, covers and contradictory metadata are excluded. If no
+candidate survives, nothing is sent. This is a bounded search, not a
+guarantee that Spotify's exact recording was identified.
 
 Positive clip matches are cached for 90 days; fallback and negative decisions for
 one day. Matching-policy or track-metadata changes invalidate matching decisions.

@@ -45,10 +45,35 @@ class VersionMatchingTests(unittest.TestCase):
             dict(id="E" * 11, title="Bob Sinclar - Love Generation", channel="Bob Sinclar", view_count=10 ** 9,
                  live_status="is_upcoming"))]
         chosen = most_viewed(track, ranking)
-        self.assertEqual((chosen.candidate["id"], chosen.candidate["fallback"], chosen.accepted), ("B" * 11, True, True))
-        # Always a video: another song of the artist rather than nothing.
-        self.assertEqual(most_viewed(track, ranking[:1]).candidate["id"], "A" * 11)
+        self.assertEqual((chosen.candidate["id"], chosen.candidate["fallback"], chosen.accepted), ("C" * 11, True, True))
+        # A wrong song is not an acceptable fallback, even if it has views.
+        self.assertIsNone(most_viewed(track, ranking[:1]))
         self.assertIsNone(most_viewed(track, [{"reason": "no candidate"}]))
+
+    def test_fallback_rejects_known_mismatch_and_unrelated_popularity(self):
+        track = Track("2" * 22, "Papaoutai", ("Stromae",), 232)
+        ranking = [{"candidate": c} for c in [
+            {"id": "A" * 11, "title": "Stromae - Formidable", "channel": "Stromae",
+             "view_count": 1_000_000_000},
+            {"id": "B" * 11, "title": "Papaoutai", "channel": "Someone Else",
+             "view_count": 1_000_000},
+            {"id": "C" * 11, "title": "Stromae - Papaoutai (Official Video)",
+             "channel": "Stromae", "view_count": 900_000,
+             "audio_check": {"verdict": "mismatch"}},
+            {"id": "D" * 11, "title": "Stromae - Papaoutai (Official Video)",
+             "channel": "Stromae", "view_count": 12, "duration": 900},
+        ]]
+        self.assertIsNone(most_viewed(track, ranking, self.cfg))
+
+    def test_fallback_rejects_explicitly_different_edition(self):
+        ranking = [{"candidate": dict(id="R" * 11,
+                   title="The Underdog Project - Summer Jam (Extended Mix)",
+                   channel="The Underdog Project", duration=214, view_count=99999)}]
+        self.assertIsNone(most_viewed(self.track, ranking, self.cfg))
+        ranking.append({"candidate": dict(id="T" * 11,
+                       title="The Underdog Project - Summer Jam (Radio Edit)",
+                       channel="The Underdog Project", duration=214, view_count=2)})
+        self.assertEqual(most_viewed(self.track, ranking, self.cfg).candidate["id"], "T" * 11)
 
     def test_no_clip_uses_official_audio(self):
         self.assertEqual(self.choose([self.audio]).candidate["id"], self.audio["id"])

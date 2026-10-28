@@ -187,6 +187,19 @@ class StorageAndLoopTests(Fixtures):
             self.assertEqual(self.bridge().step(), "sent")
         resolve.assert_not_called()
 
+    def test_unrelated_fallback_never_dispatches_or_negative_caches_a_video(self):
+        from youtube_match import AmbiguousMatch
+        self.store.db.execute("DELETE FROM matches")
+        wrong = {"id": "W" * 11, "title": "Stromae - Formidable",
+                 "channel": "Stromae", "view_count": 10**9}
+        with patch("main.resolve", side_effect=AmbiguousMatch("no reliable audio",
+                                                               [{"candidate": wrong}])):
+            self.assertEqual(self.bridge().step(), "no_match")
+        self.tv.send.assert_not_called()
+        hit, candidate = self.store.lookup(self.track, self.cfg)
+        self.assertTrue(hit)
+        self.assertIsNone(candidate)
+
     def test_official_audio_yields_to_most_viewed_clip(self):
         audio = score(self.track, {**self.video, "id": "E" * 11, "title": "Stromae - Papaoutai (Official Audio)", "view_count": 5}, self.cfg)
         clip = {**self.video, "id": "F" * 11, "title": "Stromae - Papaoutai", "channel": "Fan", "view_count": 9000}

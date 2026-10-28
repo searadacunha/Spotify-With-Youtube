@@ -12,7 +12,7 @@ from common import parallel, run
 from audio_match import AudioComparator
 
 LOG = logging.getLogger(__name__)
-SCORING_VERSION = 7
+SCORING_VERSION = 8
 VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}")
 OFFICIAL_VIDEO = r"\bofficial (?:(?:4k|8k|hd|hq|remastered) )?(?:music )?video\b|\bclip officiel\b|\bvideo (?:musical )?oficial\b|\bvideo officiel\b|\b(?:video ?clipe|clipe) oficial\b"
 VERSION = r"\b(?:remix|mix|edit|version|live|acoustic|unplugged|remaster(?:ed)?|slowed|sped up|speed up|nightcore|instrumental|extended|clean|explicit|bootleg|mashup)\b"
@@ -380,15 +380,57 @@ def resolve(track, cfg, candidates=None, comparator=None):
         raise AmbiguousMatch(str(exc), report()) from exc
 
 
-def most_viewed(track, ranking):
-    """Every song gets a video: without a verified official clip, the most-viewed result for the song.
-    Popularity picks here, it never proves the recording."""
-    song, artist = song_title(track.title), norm(track.artists[0].split(",")[0]).replace(" ", "")
-    playable = [m["candidate"] for m in ranking if VIDEO_ID.fullmatch(m.get("candidate", {}).get("id") or "")
-                and m["candidate"].get("live_status") not in {"is_live", "is_upcoming"}]
-    named = [c for c in playable if phrase(song, norm(c.get("title"))) or phrase(song, song_title(c.get("title") or "", track.artists))]
-    pool = [c for c in named if artist in norm(f"{c.get('title')} {c.get('channel')}").replace(" ", "")] or named or playable
+def most_viewed(track, ranking, cfg=None):
+    """Conservative popular fallback: never use an unrelated search result.
+
+    Metadata cannot prove audio identity. A missing/contradictory song, artist,
+    explicitly different edition, or known audio mismatch is NOT a fallback.
+    """
+    expected_title, expected_edition = identity(track.title)
+    expected_artist = norm(track.artists[0].split(",")[0]).replace(" ", "")
+    maximum_seconds = (cfg or {}).get("max_duration_delta_seconds", 45)
+    maximum_ratio = (cfg or {}).get("max_duration_delta_ratio", 0.2)
+    pool = []
+    for entry in ranking:
+        c = entry.get("candidate") if isinstance(entry, dict) else None
+        if not isinstance(c, dict) or not VIDEO_ID.fullmatch(c.get("id") or ""):
+            continue
+        if c.get("live_status") in {"is_live", "is_upcoming"}:
+            continue
+        if (c.get("audio_check") or {}).get("verdict") in {"mismatch", "uncertain"}:
+            continue
+        title = norm(c.get("title") or "")
+        if re.search(r"\b(?:cover|tribute|karaoke|reaction|parody|parodia|mashup)\b", title):
+            continue
+        found_title, found_edition = identity(c.get("title") or "", track.artists)
+        if found_title != expected_title:
+            continue
+        # An explicitly requested radio edit/remix must not silently become an
+        # unlabelled recording, even when the latter is vastly more popular.
+        if expected_edition and found_edition != expected_edition:
+            continue
+        if not expected_edition and found_edition and not all(
+                e.startswith("original ") for e in found_edition):
+            continue
+        artist_evidence = norm(f"{c.get('title') or ''} {c.get('channel') or ''}").replace(" ", "")
+        if expected_artist not in artist_evidence:
+            continue
+        metadata_artists = c.get("artists")
+        if metadata_artists and (not isinstance(metadata_artists, list) or
+                                 not any(norm(a).replace(" ", "") == expected_artist
+                                         for a in metadata_artists if isinstance(a, str))):
+            continue
+        duration = c.get("duration")
+        if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+            if not math.isfinite(duration) or abs(duration - track.duration) > min(
+                    maximum_seconds, track.duration * maximum_ratio):
+                continue
+        pool.append(c)
     if not pool:
         return None
-    best = max(pool, key=lambda c: c.get("view_count") or 0)
-    return Match({**best, "fallback": True}, 0, "most_viewed", True, [f"most viewed fallback: {best.get('view_count') or 0} views"])
+    def views(candidate):
+        count = candidate.get("view_count")
+        return count if type(count) in (int, float) and math.isfinite(count) and count >= 0 else 0
+    best = max(pool, key=lambda c: (views(c), c["id"]))
+    return Match({**best, "fallback": True}, 0, "most_viewed", True,
+                 [f"unverified same-song fallback: {views(best)} views"])
