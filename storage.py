@@ -53,6 +53,25 @@ class Store:
             self.db.execute("INSERT OR REPLACE INTO matches VALUES (?, ?, ?, ?)",
                             (track.id, self.fingerprint(track, cfg), json.dumps(candidate), time.time() + ttl))
 
+    def remember_if_stale(self, track, cfg, candidate):
+        """Atomically refuse to replace a current match written by live playback.
+
+        A stale/expired cache may be refreshed, but a concurrent, valid result
+        wins over this speculative prewarming worker.
+        """
+        policy = self.fingerprint(track, cfg)
+        ttl = 90 * 86400 if candidate and not candidate.get("fallback") else 86400
+        now = time.time()
+        with self.db:
+            result = self.db.execute(
+                "INSERT INTO matches VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(track_id) DO UPDATE SET "
+                "fingerprint=excluded.fingerprint, payload=excluded.payload, "
+                "expires=excluded.expires WHERE matches.expires < ? "
+                "OR matches.fingerprint != ?",
+                (track.id, policy, json.dumps(candidate), now + ttl, now, policy))
+        return result.rowcount == 1
+
     def get_state(self, name):
         row = self.db.execute("SELECT payload FROM state WHERE name=?", (name,)).fetchone()
         return json.loads(row[0]) if row else None

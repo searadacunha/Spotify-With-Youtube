@@ -224,3 +224,8 @@ track IDs and the TV's network address; review them before sharing diagnostics.
 
 Not affiliated with Spotify, Google, YouTube or SmartTube. This repository does
 not distribute SmartTube or media files.
+
+
+## Optional playlist cache preparation
+
+`./smarttube prewarm /path/to/playlist-metadata.json` can prepare YouTube matches for a user-provided list of Spotify track IDs, titles, artists and durations, **without** requesting new OAuth scopes or controlling the TV. This provides a cache hit when that track plays later, subject to expiration and matching policy. It has unit tests but no published real-TV latency benchmark; see [prewarm protocol and limits](docs/PREWARM.md).
