@@ -55,9 +55,13 @@ class Bridge:
             # A foreground check alone cannot cancel an expensive search when
             # the user switches tracks without changing the active TV app.
             self.tv.check_control(self.generation)
-            current = self.source.current()
-            if current is None or current.id != self.last_observed:
-                raise TrackChanged()
+            # The guard is also used outside an active track search (e.g. a
+            # cancellation while probing the TV). Only a tracked search has an
+            # expected Spotify id to compare against.
+            if self.last_observed is not None:
+                current = self.source.current()
+                if current is None or current.id != self.last_observed:
+                    raise TrackChanged()
             self.next_control_check = time.monotonic() + self.cfg["poll_seconds"]
 
     def wait(self, delay):
