@@ -1,18 +1,18 @@
 # Optional playlist cache prewarming (no additional Spotify OAuth permissions)
 
 The TV-only Spotify source cannot read future tracks from the user's queue.
-Rather than request private playlist scopes, \`./smarttube prewarm\` accepts an
+Rather than request private playlist scopes, `./smarttube prewarm` accepts an
 explicit **metadata-only** JSON export and resolves each unique track in advance:
 
-\`\`\`json
+```json
 [
   {"id":"AAAAAAAAAAAAAAAAAAAAAA","title":"Track title","artists":["Artist"],"duration_ms":200000,"album":"Album"}
 ]
-\`\`\`
+```
 
-\`\`\`sh
+```sh
 ./smarttube prewarm /path/to/playlist-metadata.json
-\`\`\`
+```
 
 The command uses the existing matching policy and SQLite cache. It does **not**
 read current playback, send ADB commands, touch SmartTube or create OAuth tokens.

@@ -30,7 +30,10 @@ class PlaylistWarmTests(unittest.TestCase):
         self.path.write_text(json.dumps([self.row, self.row]))
         self.assertEqual(load_export(self.path), [self.track])
         for invalid in ([{**self.row, "access_token": "secret"}],
-                        [{**self.row, "duration_ms": True}], [{}]):
+                        [{**self.row, "duration_ms": True}],
+                        [{**self.row, "artists": "Stromae"}],
+                        [{**self.row, "artists": []}],
+                        [{**self.row, "album": {"title": "invalid"}}], [{}]):
             with self.subTest(invalid=invalid):
                 self.path.write_text(json.dumps(invalid))
                 with self.assertRaises(ValueError):

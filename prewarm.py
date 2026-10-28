@@ -26,11 +26,18 @@ def load_export(path: Path) -> list[Track]:
         if not isinstance(row, dict) or set(row) - FIELDS:
             raise ValueError(f"Track {index}: unexpected metadata field")
         duration = row.get("duration_ms")
+        artists = row.get("artists")
+        album = row.get("album", "")
         if type(duration) is not int or duration <= 0:
             raise ValueError(f"Track {index}: duration_ms must be positive integer")
+        if (type(artists) is not list or not artists or
+                not all(isinstance(a, str) and a.strip() for a in artists)):
+            raise ValueError(f"Track {index}: artists must be a nonempty list of names")
+        if not isinstance(album, str):
+            raise ValueError(f"Track {index}: album must be a string")
         try:
-            track = Track(row["id"], row["title"], tuple(row["artists"]),
-                          duration / 1000, row.get("album", ""))
+            track = Track(row["id"], row["title"], tuple(artists),
+                          duration / 1000, album)
         except (TypeError, KeyError, ValueError) as exc:
             raise ValueError(f"Track {index}: invalid metadata ({type(exc).__name__})") from None
         if track.id not in seen:
