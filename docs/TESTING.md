@@ -116,3 +116,22 @@ Matching changes must add or update a case in `tests/test_matching.py` modelled 
 real track (title grammar, candidates as yt-dlp would return them, expected
 decision). Keep assertions on **decisions** (accepted / tier / abstain), not on
 score arithmetic alone, and never weaken an existing assertion to make a suite pass.
+
+
+## Intent dispatch latency — reproducible measurement interface
+
+Every successful ADB intent now emits one `DISPATCH_METRIC` JSON log record with
+`seconds_from_observation` and whether the result came from the cache or
+from a fresh search. The record deliberately excludes track titles and IDs.
+
+```sh
+python scripts/analyze_dispatch_logs.py logs/bridge.log
+python -m unittest tests.test_dispatch_metrics -v
+```
+
+The output reports counts, median and nearest-rank p95 from **observed
+successful sends only**. It does not measure Android video startup or audible
+playback, user-perceived delay since pressing Skip, or any failed/suppressed
+attempt. Current CI exercises the format with synthetic events; it does not
+supply genuine TV latency results. Logs may be rotated: combine preserved log
+files externally before analysis if a longer observation window is required.

@@ -27,6 +27,8 @@ class Bridge:
         self.cfg, self.source, self.tv, self.store = cfg, source, tv, store
         self.dry_run = dry_run
         self.last_observed = None
+        # Start of observed-track -> Android intent latency (not audible playback).
+        self.observed_at = None
         self.retry_at, self.failures = 0, 0
         self.last_done = None if dry_run else store.get_state("last_done")
         self.destination = (cfg["tv_target"], cfg["smarttube_package"])
@@ -81,6 +83,7 @@ class Bridge:
             return "idle"
         if track.id != self.last_observed:
             self.last_observed = track.id
+            self.observed_at = time.monotonic()
             self.retry_at, self.failures = 0, 0
             LOG.info("SPOTIFY %s | %s — %s | %.3fs | album=%s", track.id,
                      ", ".join(track.artists), track.title, track.duration, track.album)
@@ -147,6 +150,16 @@ class Bridge:
             return "stale"
         if not self.tv.send(candidate["id"], track_id=track.id, generation=self.generation):
             return "duplicate"
+        # The ADB intent was accepted, but Android may still be buffering.
+        # No track titles/identifiers or secrets in this single-purpose metric.
+        latency = time.monotonic() - (self.observed_at if self.observed_at is not None
+                                      else time.monotonic())
+        LOG.info("DISPATCH_METRIC %s", json.dumps({
+            "schema": 1, "event": "android_intent_sent",
+            "seconds_from_observation": round(max(0.0, latency), 3),
+            "source": "cache" if hit else "search",
+            "playback_on_tv_confirmed": False,
+        }, sort_keys=True))
         self.done(track, "sent", candidate["id"])
         return "sent"
 
