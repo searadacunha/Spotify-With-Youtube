@@ -16,7 +16,7 @@ LABEL = "local.spotify-smarttube"
 DOMAIN = f"gui/{os.getuid()}"
 PLIST = Path.home() / "Library/LaunchAgents" / f"{LABEL}.plist"
 PYTHON = str(ROOT / ".venv/bin/python")
-COMMANDS = ["start", "stop", "status", "resume", "test", "logs", "run", "match", "login", "check"]
+COMMANDS = ["start", "stop", "status", "resume", "test", "logs", "run", "match", "prewarm", "login", "check"]
 
 
 def launchctl(*args):
@@ -61,7 +61,7 @@ def main():
     parser = argparse.ArgumentParser(description="Control the Spotify → SmartTube bridge")
     parser.add_argument("command", choices=COMMANDS)
     args, extra = parser.parse_known_args()
-    if extra and args.command not in {"run", "test", "match"}:
+    if extra and args.command not in {"run", "test", "match", "prewarm"}:
         parser.error("Unknown options: " + " ".join(extra))
     os.umask(0o077)
     (ROOT / "logs").mkdir(exist_ok=True, mode=0o700)
@@ -128,6 +128,20 @@ def main():
     elif args.command == "match":
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stderr)
         return match(extra)
+    elif args.command == "prewarm":
+        from prewarm import prewarm_file
+        from storage import Store
+        command = argparse.ArgumentParser(prog="smarttube prewarm",
+                                          description="Prepare matching cache from metadata-only JSON")
+        command.add_argument("playlist", type=Path)
+        options = command.parse_args(extra)
+        cfg = load_config()
+        store = Store(ROOT / "cache/matches.sqlite3")
+        try:
+            stats = prewarm_file(options.playlist, cfg, store)
+        finally:
+            store.close()
+        print(json.dumps(stats, indent=2))
     elif args.command == "logs":
         path = ROOT / "logs/bridge.log"
         path.touch(exist_ok=True)
