@@ -49,6 +49,20 @@ class StorageAndLoopTests(Fixtures):
     def bridge(self, dry=False):
         return Bridge(self.cfg, self.source, self.tv, self.store, dry)
 
+    def test_dispatch_metric_does_not_claim_playback_or_include_track_details(self):
+        with self.assertLogs("main", level="INFO") as captured:
+            self.assertEqual(self.bridge().step(), "sent")
+        records = [line.split("DISPATCH_METRIC ", 1)[1] for line in captured.output
+                   if "DISPATCH_METRIC " in line]
+        self.assertEqual(len(records), 1)
+        data = json.loads(records[0])
+        self.assertEqual(data["event"], "android_intent_sent")
+        self.assertEqual(data["source"], "cache")
+        self.assertFalse(data["playback_on_tv_confirmed"])
+        self.assertGreaterEqual(data["seconds_from_observation"], 0)
+        self.assertNotIn(self.track.title, records[0])
+        self.assertNotIn(self.track.id, records[0])
+
     def test_cache_rechecks_policy_and_track_metadata(self):
         self.assertTrue(self.store.lookup(self.track, self.cfg)[0])
         self.assertFalse(self.store.lookup(self.track, {**self.cfg, "min_score": 150})[0])
