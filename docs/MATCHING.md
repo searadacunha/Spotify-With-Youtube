@@ -271,24 +271,27 @@ and names a valid reference video; evidence coming from YouTube metadata fields 
 never read (a test asserts that an `audio_check` key returned by the network is
 discarded).
 
-## 14. Most-viewed fallback
+## 14. Conservative most-viewed fallback
 
-When `resolve()` does not return an accepted tier-1 official
-clip (no clip, official audio or lyric video only, abstention, audio download
-failure), `most_viewed()` picks among the candidates already found, live and upcoming
-streams excluded:
+When no accepted tier-1 official clip is available, the system considers
+popular search results, but **never** chooses an unrelated song simply
+because its view count is high. A candidate must have the same normalized
+title, evidence of the first Spotify artist in its title/channel, and an
+edition consistent with the requested Spotify edition. Known audio mismatches,
+contradictory detailed artists, implausible durations, covers, live streams
+and obvious substitutions are excluded.
 
-1. results whose title names the song (raw or normalized) and whose title or channel
-   names the first artist;
-2. otherwise results naming the song;
-3. otherwise any result.
+The highest view count among the remaining candidates wins with the explicit
+`most_viewed` label. Popularity does **not** establish the recording's identity.
+When nothing survives, the bridge records `no_match` instead of launching
+an arbitrary video. This safety change invalidates older cached matches via
+`SCORING_VERSION`; fallbacks still expire after 24 h.
 
-The highest `view_count` of the first non-empty group wins (log `NO VERIFIED CLIP …:
-most viewed video instead`). Popularity only picks; it proves nothing about the
-edition, so the fallback is cached 24 h. `NO RELIABLE MATCH` remains only when the
-search returned no playable result. `./smarttube match` reports `verdict: most_viewed`.
-The fallback cannot guarantee a video for every track: an empty search, network
-failure or unavailable upload can prevent selection or playback.
+Automatic full-playlist prewarming is **not implemented**. The TV source only
+exposes the currently playing track; the existing Spotify OAuth flow grants
+`user-read-currently-playing`, not access to private playlist membership.
+The bridge does not request extra permissions or pretend to know the next track.
+Hardware latency and wrong-match rates require real-device measurement.
 
 ## Worked examples
 
