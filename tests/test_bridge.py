@@ -98,7 +98,11 @@ class StorageAndLoopTests(Fixtures):
     def test_switch_during_active_resolution_cancels_before_dispatch(self):
         self.store.db.execute("DELETE FROM matches")
         other = Track("1" * 22, "Another", ("Artist",), 200)
-        self.store.remember(other, self.cfg, self.video)
+        # Keep this fixture semantically valid: the old fixture cached the
+        # unrelated Papaoutai clip, which the stricter matcher rightly rejects.
+        valid_other = {**self.video, "title": "Artist - Another (Official Music Video)",
+                       "channel": "Artist", "duration": 200}
+        self.store.remember(other, self.cfg, valid_other)
         self.source.current.side_effect = [self.track, other]
         bridge = self.bridge()
 
