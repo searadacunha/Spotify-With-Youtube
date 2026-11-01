@@ -49,6 +49,20 @@ class StorageAndLoopTests(Fixtures):
     def bridge(self, dry=False):
         return Bridge(self.cfg, self.source, self.tv, self.store, dry)
 
+    def test_dispatch_metric_does_not_claim_playback_or_include_track_details(self):
+        with self.assertLogs("main", level="INFO") as captured:
+            self.assertEqual(self.bridge().step(), "sent")
+        records = [line.split("DISPATCH_METRIC ", 1)[1] for line in captured.output
+                   if "DISPATCH_METRIC " in line]
+        self.assertEqual(len(records), 1)
+        data = json.loads(records[0])
+        self.assertEqual(data["event"], "android_intent_sent")
+        self.assertEqual(data["source"], "cache")
+        self.assertFalse(data["playback_on_tv_confirmed"])
+        self.assertGreaterEqual(data["seconds_from_observation"], 0)
+        self.assertNotIn(self.track.title, records[0])
+        self.assertNotIn(self.track.id, records[0])
+
     def test_cache_rechecks_policy_and_track_metadata(self):
         self.assertTrue(self.store.lookup(self.track, self.cfg)[0])
         self.assertFalse(self.store.lookup(self.track, {**self.cfg, "min_score": 150})[0])
@@ -98,7 +112,11 @@ class StorageAndLoopTests(Fixtures):
     def test_switch_during_active_resolution_cancels_before_dispatch(self):
         self.store.db.execute("DELETE FROM matches")
         other = Track("1" * 22, "Another", ("Artist",), 200)
-        self.store.remember(other, self.cfg, self.video)
+        # Keep this fixture semantically valid: the old fixture cached the
+        # unrelated Papaoutai clip, which the stricter matcher rightly rejects.
+        valid_other = {**self.video, "title": "Artist - Another (Official Music Video)",
+                       "channel": "Artist", "duration": 200}
+        self.store.remember(other, self.cfg, valid_other)
         self.source.current.side_effect = [self.track, other]
         bridge = self.bridge()
 
@@ -186,6 +204,19 @@ class StorageAndLoopTests(Fixtures):
         with patch("main.resolve") as resolve:
             self.assertEqual(self.bridge().step(), "sent")
         resolve.assert_not_called()
+
+    def test_unrelated_fallback_never_dispatches_or_negative_caches_a_video(self):
+        from youtube_match import AmbiguousMatch
+        self.store.db.execute("DELETE FROM matches")
+        wrong = {"id": "W" * 11, "title": "Stromae - Formidable",
+                 "channel": "Stromae", "view_count": 10**9}
+        with patch("main.resolve", side_effect=AmbiguousMatch("no reliable audio",
+                                                               [{"candidate": wrong}])):
+            self.assertEqual(self.bridge().step(), "no_match")
+        self.tv.send.assert_not_called()
+        hit, candidate = self.store.lookup(self.track, self.cfg)
+        self.assertTrue(hit)
+        self.assertIsNone(candidate)
 
     def test_official_audio_yields_to_most_viewed_clip(self):
         audio = score(self.track, {**self.video, "id": "E" * 11, "title": "Stromae - Papaoutai (Official Audio)", "view_count": 5}, self.cfg)

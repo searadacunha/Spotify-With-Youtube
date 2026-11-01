@@ -35,11 +35,16 @@ class MatchCommandTests(unittest.TestCase):
         self.assertEqual((track.artists, track.album), (("Marshmello", "Juice WRLD"), "Bye Bye"))
 
     def test_match_reports_most_viewed_fallback_and_no_match_with_exit_code_1(self):
-        ranking = [{"candidate": dict(id="C" * 11, title="The Underdog Project - Summer Jam", channel="x", view_count=7)}]
+        ranking = [{"candidate": dict(id="C" * 11, title="The Underdog Project - Summer Jam (Radio Edit)", channel="x", view_count=7)}]
         code, report, _ = self.run_match(self.ARGS, side_effect=AmbiguousMatch("Isolated unofficial source", ranking))
         self.assertEqual((code, report["verdict"], report["error"], report["video_id"]),
                          (0, "most_viewed", "Isolated unofficial source", "C" * 11))
         code, report, _ = self.run_match(self.ARGS, return_value=(None, []))
+        self.assertEqual((code, report["verdict"], report["video_id"]), (1, "no_match", None))
+        wrong = [{"candidate": dict(id="D" * 11,
+                  title="The Underdog Project - Summer Jam (Extended Mix)",
+                  channel="The Underdog Project", view_count=1000000)}]
+        code, report, _ = self.run_match(self.ARGS, side_effect=AmbiguousMatch("ambiguous", wrong))
         self.assertEqual((code, report["verdict"], report["video_id"]), (1, "no_match", None))
 
     def test_cli_passes_match_options_through(self):
